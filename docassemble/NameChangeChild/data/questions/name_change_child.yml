@@ -95,7 +95,7 @@ code: |
     else:
       if children[i].user_relationship == "guardian":
         children[i].guardian_docs
-      criminal_history_intro
+      children[i].criminal_history_intro
       children[i].pending_arrests
       children[i].pending_charges
       children[i].misdemeanors
@@ -105,7 +105,7 @@ code: |
         registry_kickout
       children[i].id_theft
       if children[i].felonies or children[i].registry or children[i].id_theft:
-        child_conviction_intro
+        children[i].conviction_intro
   	    children[i].convictions.gather()
 
       children[i].change_reasons
@@ -664,7 +664,6 @@ fields:
 ---
 id: waiver reason
 question: |
-  % if interview_type == "child":
   % if children.number_gathered() == 1:
   % if notice_would_be_published == True:
   Why would publishing notice of the name change request ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk?
@@ -678,9 +677,6 @@ question: |
   Why would giving notice of the name change request put your children at risk?
   % endif
   % endif
-  % else:
-  ADULT NAME CHANGE TEXT
-  % endif
 subquestion: |
   ${collapse_template(notice_waiver_example)}
 fields:
@@ -692,17 +688,17 @@ subject: |
   **What should my answer look like?**
 content: |  
   % if interview_type == "child":
-  % if children.number_gathered() == 1:
-  This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
+  % if x.number_gathered() == 1:
+  This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put ${x[0].new.name.full(middle='full')} (AKA ${x[0].name.full(middle='full')}) at risk of physical harm or discrimination.
   % else:
   This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put your children at risk of physcial harm or discrimination.
   % endif
 
   Here are some examples: 
   
-  "I need to change ${children[0].name.full(middle='full')}'s name to ${children[0].new.name.full(middle='full')} because we are trying to get away from my ex-boyfriend. He has abused ${children[0].name.full(middle='full')} in the past. I am afraid he will hurt ${children[0].name.full(middle='full')} if he learns about this name change request."
+  "I need to change ${x[0].name.full(middle='full')}'s name to ${x[0].new.name.full(middle='full')} because we are trying to get away from my ex-boyfriend. He has abused ${x[0].name.full(middle='full')} in the past. I am afraid he will hurt ${x[0].name.full(middle='full')} if he learns about this name change request."
   
-  "${children[0].name.full(middle='full')} wants to change their name to ${children[0].new.name.full(middle='full')} as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
+  "${x[0].name.full(middle='full')} wants to change their name to ${x[0].new.name.full(middle='full')} as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
   % else:
   ADULT NAME CHANGE TEXT
   % endif
@@ -814,16 +810,20 @@ subquestion: |
 ---
 #The next questions will be in the shared yml, this is for testing purposes
 id: criminal history intro
-continue button field: criminal_history_intro
+generic object: ALPeopleList
+continue button field: x[i].criminal_history_intro
 question: |
   Criminal history
 subquestion: |
-  % if interview_type == "adult":
-  To request a name change in Illinois, a person needs to tell the court about any criminal history they may have.
+  % if interview_type == 'adult':
+    % if i == 0:
+    To request a name change in Illinois, you need to tell the court about any criminal history you may have.
+    % else:
+    To request a name change in Illinois, your spouse needs to tell the court about any criminal history they may have.
+    % endif
   % else:
-  To request a name change for a child, you must tell the court about any criminal history the child may have.
+    To request a name change for a child, you must tell the court about any criminal history the child may have.
   % endif
-
 
   TO DO: Add more information
 ---
@@ -862,10 +862,10 @@ subquestion: |
   % if i == 0:
   In other words, do you have any ongoing criminal cases against you for misdemeanor or felony offenses?
   % else:
-    In other words, does your spouse have any ongoing criminal cases against them for misdemeanor or felony offenses?
+  In other words, does your spouse have any ongoing criminal cases against them for misdemeanor or felony offenses?
   % endif
   % else:
-    In other words, does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any ongoing criminal cases against them for misdemeanor or felony offenses?
+  In other words, does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any ongoing criminal cases against them for misdemeanor or felony offenses?
   % endif
 fields:
   - no label: x[i].pending_charges
@@ -924,10 +924,10 @@ question: |
   % if i == 0:
   Do you have any convictions or were you placed on probation for a crime that required you register?
   % else:
-  Do your spouse have any convictions or were they placed on probation for a crime that required them register?
+  Do your spouse have any convictions or were they placed on probation for a crime that required them to register?
   % endif
   % else:
-  Do ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?
   % endif
 subquestion: |
   These include crimes that require registration under the:
@@ -943,7 +943,7 @@ subquestion: |
   **Important**: If they have been placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
   % endif
   % else:
-  **Important**: If they have been placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change their name** unless one of these exceptions apply:
+  **Important**: If they have been placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
   % endif
   
   * Marriage
@@ -1000,21 +1000,37 @@ fields:
   - no label: x[i].id_theft
     datatype: yesnoradio
 ---
-id: child conviction intro
-continue button field: child_conviction_intro
+id: conviction intro
+generic object: ALPeopleList
+continue button field: x[i].conviction_intro
 question: |
   Criminal history details
 subquestion: |
-  For these convictions or probations of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}), you must enter more information::
+  % if interview_type == 'adult':
+  For these convictions or probations, you must enter more information on your name change request:
   
-  % if children[i].felonies:
-   * Felony convictions or probations
+  % if x[0].felonies:
+  * Felony convictions or probations
   % endif
-  % if children[i].registry:
-   * **{Offenses requiring registration}**
+  % if x[0].registry:
+  * **{Offenses requiring registration}**
   % endif
-  % if children[i].id_theft:
-   * Identification theft or Aggravated identity theft
+  % if x[0].id_theft:
+  * Identification theft or Aggravated identity theft
+  % endif
+  % else:
+  For these convictions or probations of ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}), you must enter more information::
+  
+  % if x[i].felonies:
+  * Felony convictions or probations
+  % endif
+  % if x[i].registry:
+  * **{Offenses requiring registration}**
+  % endif
+  % if x[i].id_theft:
+  * Identification theft or Aggravated identity theft
+  % endif
+
   % endif
 ---
 terms:
@@ -1026,6 +1042,7 @@ terms:
        * Arsonist Registration Act.
 ---
 id: conviction details
+generic object: ALPeopleList
 question: |
   % if i == 0:
   Conviction details
@@ -1033,55 +1050,63 @@ question: |
   More conviction details
   % endif
 subquestion: |
-  For any of the following convictions or probations of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}), you must enter more information:
+  % if interview_type == 'adult':
+  For any of the following convictions or probations, you must enter more information on your name change request:
+  % else:
+  For any of the following convictions or probations of ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}), you must enter more information:
+  % endif
   
-  % if children[i].felonies:
+  % if x[i].felonies:
    * Felony convictions or probations
   % endif
-  % if children[i].registry:
+  % if x[i].registry:
    * **{Offenses requiring registration}**
   % endif
-  % if children[i].id_theft:
+  % if x[i].id_theft:
    * Identification theft or Aggravated identity theft
   % endif
 fields:
-  - Offense description: children[i].convictions[j].name.text
+  - Offense description: x[i].convictions[j].name.text
     maxlength: 30
-  - Date of conviction or probation: children[i].convictions[j].date
+  - Date of conviction or probation: x[i].convictions[j].date
     datatype: date
     max: ${ today().format("yyyy-MM-dd") }
-  - Sentence received: children[i].convictions[j].sentence
+  - Sentence received: x[i].convictions[j].sentence
     maxlength: 30
-  - Date sentence completed: children[i].convictions[j].completed_date
+  - Date sentence completed: x[i].convictions[j].completed_date
     datatype: date
     max: ${ today().format("yyyy-MM-dd") }
-  - Pardoned?: children[i].convictions[j].pardoned
+  - Pardoned?: x[i].convictions[j].pardoned
     datatype: yesnoradio
-
 ---
 id: any other convictions
+generic object: ALPeopleList
 question: |
   Are there other convictions?
 subquestion: |
-  For these convictions or probations of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}), you must enter more information on your name change request:
-  
-  % if children[i].felonies:
+  % if interview_type == 'adult':
+  For these convictions or probations, you must enter more information on your name change request:
+  % else:
+  For these convictions or probations of ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}), you must enter more information on your name change request:
+  % endif
+
+  % if x[i].felonies:
    * Felony convictions or probations
   % endif
-  % if children[i].registry:
+  % if x[i].registry:
    * **{Offenses requiring registration}**
   % endif
-  % if children[i].id_theft:
+  % if x[i].id_theft:
    * Identification theft or Aggravated identity theft
   % endif
   
   So far you have told us about:
   
-  % for conviction in children[i].convictions:
+  % for conviction in x[i].convictions:
    * ${conviction.name.text} on ${conviction.date}
   % endfor
 fields:
-  - "Add another conviction or probation?": children[i].convictions.there_is_another
+  - "Add another conviction or probation?": x[i].convictions.there_is_another
     datatype: yesnoradio
 ---
 id: children there is another
