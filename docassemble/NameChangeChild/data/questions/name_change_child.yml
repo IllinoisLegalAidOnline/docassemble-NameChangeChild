@@ -1,0 +1,1502 @@
+metadata:
+  title: Name change for a child
+  short title: Child name change
+  comment: This program makes the forms to ask the court to change the names of minor children.
+  authors:
+    - Vivian McNaughton
+    - Matt Newsted
+---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+  - docassemble.ALToolbox:phone-number-validation.yml
+  - docassemble.ILAO:ilao-interview-framework.yml
+  - docassemble.ILAO:shared-basic-questions.yml
+---
+objects:
+  - users: ALPeopleList.using(there_are_any=True)
+  - children: ALPeopleList.using(there_are_any=True, object_type=ALIndividual, complete_attribute=['complete'])
+  - children[i].new: ALIndividual
+  #- children[i].other_parent: ALIndividual
+  #- children[i].third_parent_guardian: ALIndividual
+  #- children[i].custody_haver: ALIndividual
+  - children[i].parents: ALPeopleList.using(there_are_any=True, object_type=ALIndividual)
+  - safe_address: ALAddress
+  - children[i].birth_place: ALAddress
+  - parent_list_generator: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual)
+  - children[i].convictions: DAList.using(object_type=Thing, there_are_any=True)
+---
+# Road map
+sections:
+  - section_intro: Start
+  - section_case: Case information
+  - section_children: Children and parents
+  - section_user: Your information
+  - section_filing: Filing information
+  - section_download: Download
+---
+code: |
+  ilao_easy_form_title = "Name change for a child"
+  ilao_easy_form_url = "https://www.illinoislegalaid.org/legal-information/name-change-child"
+  github_user = 'IllinoisLegalAidOnline'
+  github_repo_name = 'docassemble-NameChangeChild'
+---
+# interview order block
+mandatory: True
+code: |
+  interview_type = "child"
+  nav.set_section('section_intro')
+  sees_nav_bar
+  set_progress(5)
+  how_to_use
+  accept_terms
+  
+  nav.set_section('section_case')
+  if user_is_adult == False:
+    not_an_adult_kickout
+  if six_months_in_illinois == False:
+    not_enough_illinois_kickout
+  if time_in_illinois.years < 0.5:
+    not_enough_illinois_kickout
+  if use_safe_address == True:
+    safe_address.address
+    
+  nav.set_section('section_children')
+  children.gather()
+  waiver_reason_logic
+  if any_risk == True:
+    waiver_reason
+  elif notice_would_be_published == True and any_risk == False:
+    if dont_want_to_publish == True:
+      waiver_reason
+    
+  nav.set_section('section_user')
+  if use_safe_address == False:
+    users[0].address.address
+  users[0].name.first
+  users[0].has_email_address
+  
+  nav.set_section('section_filing')
+  filing_county
+  e_signature
+  
+  nav.set_section('section_download')
+  get_docs_screen
+---
+#Gather loop for children list
+code: |
+  children[i].name.first
+  children[i].new.name.first
+  children[i].birth_date
+  if children[i].age >= 18:
+    children[i].too_old
+  else:
+    if children[i].user_relationship == "other":
+      not_parent_or_guardian_kickout
+    else:
+      if children[i].user_relationship == "guardian":
+        children[i].guardian_docs
+      criminal_history_intro
+      children[i].pending_arrests
+      children[i].pending_charges
+      children[i].misdemeanors
+      children[i].felonies
+      children[i].registry
+      if children[i].registry and children[i].registry_exceptions.all_false():
+        registry_kickout
+      children[i].id_theft
+      if children[i].felonies or children[i].registry or children[i].id_theft:
+        child_conviction_intro
+  	    children[i].convictions.gather()
+
+      children[i].change_reasons
+  
+      children[i].birth_place.in_america
+      if use_safe_address == True:
+        if children[i].use_safe_address == False:
+          children[i].address.address
+      else:
+        children[i].address.address
+    
+      if children[i].include_other_parent == True: 
+        children[i].parents[0].name.first
+        if children[i].parents[0].agree == True: 
+          children[i].parents[0].notarized_signature
+        if children[i].parents[0].address_known == True:
+          children[i].parents[0].address.address
+        if children[i].parents[0].agree != True:
+          children[i].parents[0].notice_waiver_info  
+          if children[i].parents[0].risk_check == False:
+            if children[i].parents[0].address_known == True:
+              children[i].parents[0].receive_method 
+          if children[i].parents[0].agree != True and children[i].parents[0].address_known == False and children[i].parents[0].risk_check == False:
+            children[i].parents[0].published_notice_info 
+          elif children[i].parents[0].agree != True and children[i].parents[0].address_known == True and children[i].parents[0].risk_check == False and children[i].parents[0].receive_method == "newspaper":
+            children[i].parents[0].published_notice_info 
+        
+      if children[i].include_third_parent_guardian == True: 
+        children[i].parents[1].name.first
+        if children[i].parents[1].agree == True: 
+          children[i].parents[1].notarized_signature
+        if children[i].parents[1].address_known == True:
+          children[i].parents[1].address.address
+        if children[i].parents[1].agree != True:
+          children[i].parents[1].notice_waiver_info  
+          if children[i].parents[1].risk_check == False:
+            if children[i].parents[1].address_known == True:
+              children[i].parents[1].receive_method 
+        if children[i].parents[1].agree != True and children[i].parents[1].address_known == False and children[i].parents[1].risk_check == False:
+          children[i].parents[1].published_notice_info 
+        elif children[i].parents[1].agree != True and children[i].parents[1].address_known == True and children[i].parents[1].risk_check == False and children[i].parents[1].receive_method == "newspaper":
+            children[i].parents[1].published_notice_info 
+   
+      if children[i].include_custody_haver == True:
+        children[i].parents[2].name.first
+        if children[i].parents[2].agree == True: 
+          children[i].parents[2].notarized_signature
+        if children[i].parents[2].address_known == True:
+          children[i].parents[2].address.address
+        if children[i].parents[2].agree != True:
+          children[i].parents[2].notice_waiver_info  
+          if children[i].parents[2].risk_check == False:
+            if children[i].parents[2].address_known == True:
+              children[i].parents[2].receive_method 
+        if children[i].parents[2].agree != True and children[i].parents[2].address_known == False and children[i].parents[2].risk_check == False:
+          children[i].parents[2].published_notice_info 
+        elif children[i].parents[2].agree != True and children[i].parents[2].address_known == True and children[i].parents[2].risk_check == False and children[i].parents[2].receive_method == "newspaper":
+            children[i].parents[2].published_notice_info 
+        
+  children[i].complete = True        
+---
+#Used to calculate the amount of time the user has been living in Illinois, which needs to be 6 months or more.
+depends on:
+  - started_living_in_illinois
+code: |
+  time_in_illinois = date_difference(starting=started_living_in_illinois, ending=today())
+---
+#Used to calculate child's age. This program can only be used for minor children.
+sets:
+  - children[i].age
+depends on:
+  - children[i].birth_date
+code: |
+  date_diff_storage = date_difference(starting=children[i].birth_date, ending=today())
+  children[i].age = date_diff_storage.years
+---
+id: welcome
+question: |
+  Name change for a child
+subquestion: |
+  Welcome to Illinois Legal Aid Online's **Name change for a child** Easy Form.
+
+  This program helps you prepare court forms to change the name of minor children.
+  
+  The form you create can only be used in Illinois.
+field: sees_nav_bar
+---
+id: instructions
+continue button field: how_to_use
+question: |
+  Instructions
+subquestion: |
+  Set aside 20 to 30 minutes to finish this program. You can log in and save your work to return to later. 
+
+  After you download your form, you will need to sign it and send it to the court.
+  
+  ${ collapse_template(help_example) }  
+
+  Click on **{green words}** to learn what they mean. Some questions have a question mark in a circle ${ fa_icon("question-circle", color_css="#0DCAF0" ) } that also gives help.
+---
+template: help_example
+
+subject: |
+
+  **You can expand sections like this to show more information.**
+
+content: |  
+
+  This is an example of help. Click again to hide.
+---
+template: get_legal_help
+subject: |
+  **What if I need legal advice?**
+content: |  
+  If you have questions or concerns about your legal problem and want legal advice you should talk to a lawyer.
+ 
+  Use [**Get Legal Help**](https://www.illinoislegalaid.org/get-legal-help) to find free or low-cost legal services in your area.
+---
+id: user age check
+question: |
+  Are you 18 years old or older?
+fields:
+  - no label: user_is_adult
+    datatype: yesnoradio
+---
+id: too young kickout
+event: not_an_adult_kickout
+question: |
+  Sorry
+subquestion: |
+  Sorry, but you must be at least 18 years old to request a name change for a minor.
+  
+  If you are a minor and you do not have a parent or guardian to request a name change for you, you may want to [**Get Legal Help**]("https://www.illinoislegalaid.org/get-legal-help").
+buttons:
+  - Exit: exit
+  - Restart: restart
+---
+id: six months in illinois
+question: |
+  Have you lived continuously in Illinois for at least 6 months?
+subquestion: |
+  ${collapse_template(live_continuously)}
+fields:
+  - no label: six_months_in_illinois
+    datatype: yesnoradio
+---
+template: live_continuously
+subject: |
+  **What does "lived continuously" mean?** 
+content: |
+  "Lived continuously" means that you have lived in Illinois without taking a break to live in another state or country.
+---
+id: not enough time in illinois
+event: not_enough_illinois_kickout
+question: |
+  Sorry
+subquestion: |
+  You must have lived continuously in Illinois for at least 6 months to use this program.
+  
+  If you still need to change the name of a child in Illinois, you may want to [**Get Legal Help**]("https://www.illinoislegalaid.org/get-legal-help").
+buttons:
+  - Exit: exit
+  - Restart: restart
+---
+id: time in illinois
+question: |
+  When did you start living in Illinois?
+fields:
+  - Date: started_living_in_illinois
+    datatype: ThreePartsDate
+    alMax: ${today()}
+---
+id: use safe address check
+question: |
+  Do you want to use an alternate mailing address on your court forms?
+subquestion: |
+  When you request a name change for a child, you have to list your address and the child's address on the court papers. The court may send you important information about your case.
+
+  If you are worried that sharing your address or the child's address would put you, the child, or a member of their household at risk of physical harm, you can use an alternate mailing address.
+fields:
+  - no label: use_safe_address
+    datatype: yesnoradio
+---
+id: safe address
+question: |
+  What is your alternate mailing address?
+fields:
+  - Street address: safe_address.address
+    address autocomplete: True
+  - Address line 2: safe_address.unit
+    required: False
+  - City: safe_address.city
+  - State: safe_address.state
+    code: |
+      states_list() 
+  - ZIP code: safe_address.zip
+---
+id: child name
+question: |
+  % if i == 0:
+  What is the child's current name?
+  % else:
+  What is the ${ordinal(i)} child's current name?
+  % endif
+subquestion: |
+  % if i == 0:
+  If you want to change the name of multiple children, you will be able to enter the other children's information on later screens.
+  % endif
+fields:
+  - First: children[i].name.first
+  - Middle: children[i].name.middle
+    required: False
+  - Last: children[i].name.last
+  - Suffix: children[i].name.suffix
+    code: |
+      name_suffix()
+    required: False 
+---
+id: child birth date
+question: |
+  When was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) born?
+fields:
+  - Birth date: children[i].birth_date
+    datatype: ThreePartsDate
+    alMax: ${today().format("yyyy-MM-dd")}
+    alMin: ${today().minus(years=18).format("yyyy-MM-dd")}
+---
+id: child too old
+continue button field: children[i].too_old
+question: |
+  Sorry
+subquestion: |
+  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/legal-information/name-change-adult).
+
+  If you have another child whose name you would like to change, click **Next**.
+---
+id: child user relationship
+question: |
+  What is your relationship to ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+field: children[i].user_relationship
+choices:
+  - I am their biological parent.: bio
+  - I am their adoptive parent.: adopt
+  - I am their legal guardian.: custody
+  - ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) has lived in my home for 3 years and is recognized as my adopted child.: years
+  - Other: other
+---
+id: not parent or guardian kickout
+continue button field: not_parent_or_guardian_kickout
+question: |
+  Sorry
+subquestion: |
+  Sorry, you can only ask court to change a child’s name if you are their parent or guardian.
+  
+  If you have another child whose name you would like to change, click **Next**.
+---
+id: guardian documents
+continue button field: children[i].guardian_docs
+question: |
+  Guardianship documentation
+subquestion: |
+  You should make a copy of the court order which gave you legal guardianship of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}).
+
+  Attach a copy of the court order when you file the name change forms with the court.
+---
+id: child any convictions
+question: |
+  Has ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) been convicted of or placed on probation for any of the following in Illinois or any other state?
+fields:
+  - no label: children[i].any_convictions
+    datatype: checkboxes
+    choices:
+      - A crime which requires them to register as a sex offender: register
+      - Identity theft or aggravated identity theft: identity
+      - A felony: felony
+  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) pardoned of the crime requiring them to register as a sex offender?: children[i].register_pardon 
+    show if: children[i].any_convictions['register']
+  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) pardoned of the identity theft or aggravated identity theft?: children[i].identity_pardon
+    show if: children[i].any_convictions['identity']
+  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) pardoned of the felony 10 or more years ago?: children[i].felony_pardon
+    show if: children[i].any_convictions['felony']
+  - Did ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) complete their probation or sentence for their felony 10 or more years ago?: children[i].felony_complete
+validation code: |
+  children[i].in_need_of_pardon = False
+  if children[i].any_convictions['register'] == True:
+    if children[i].register_pardon == False:
+      children[i].in_need_of_pardon = True
+  if children[i].any_convictions['identity'] == True:
+    if children[i].identity_pardon == False:
+      children[i].in_need_of_pardon = True
+  if children[i].any_convictions['felony'] == True:
+    if children[i].felony_pardon == False and children[i].felony_complete == False:
+      children[i].in_need_of_pardon = True
+---
+id: child need pardon kickout
+continue button field: children[i].need_pardon_kickout
+question: |
+  Sorry
+subquestion: |
+  % if children[i].register_pardon == False:
+  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) must have been pardoned for their crime requiring them to register as a sex offender in order to use this program.
+  % endif
+  % if children[i].identity_pardon == False:
+  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) must have been pardoned for their identity theft crime.
+  % endif
+  % if children[i].felony_pardon == False and children[i].felony_complete == False:
+  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) must have been pardoned or completed their probation or sentence over 10 years ago.
+  % endif
+  
+  If you want to change the name of a different child, click **Next**.
+---
+id: child name change reason
+question: |
+  % if i == 0:
+  Why are you changing the child's name from "${children[i].new.name.full(middle='full')}" to "${children[i].name.full(middle='full')}?"
+  % else:
+  Why are you changing the ${ordinal(i)} child's name from "${children[i].new.name.full(middle='full')}" to "${children[i].name.full(middle='full')}?"
+  % endif
+fields:
+  - no label: children[i].change_reasons
+    datatype: checkboxes
+    none of the above: False
+    choices:
+      - I want to change their name.: user_wants
+      - They want to change their name.: child_wants
+      - Other: other
+  - Other reasons: children[i].other_reason
+    input type: area
+    show if: children[i].change_reasons['other']
+---
+id: child new name
+question: |
+  What will be ${children[i].name.full(middle='full')}'s new name?
+fields:
+  - First: children[i].new.name.first
+  - Middle: children[i].new.name.middle
+    required: False
+  - Last: children[i].new.name.last
+  - Suffix: children[i].new.name.suffix
+    code: |
+      name_suffix()
+    required: False
+---
+id: child birth address
+question: |
+  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s birth place
+fields:
+  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) born in the United States?: children[i].birth_place.in_america
+    datatype: yesnoradio
+    default: True
+  - City: children[i].birth_place.city
+  - State: children[i].birth_place.state
+    code: |
+      states_list() 
+    show if: children[i].birth_place.in_america
+  - County: children[i].birth_place.county
+    show if: children[i].birth_place.in_america
+  - Country: children[i].birth_place.country
+    show if:
+      variable: children[i].birth_place.in_america
+      is: False
+---
+id: child address
+question: |
+  What is ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s address?
+fields:
+  - Street address: children[i].address.address
+    address autocomplete: True
+  - Address line 2: children[i].address.unit
+    required: False
+  - City: children[i].address.city
+  - State: children[i].address.state
+    code: |
+      states_list() 
+  - ZIP code: children[i].address.zip
+  - County: children[i].address.county
+---
+id: child other parent
+question: |
+  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have a biological or adoptive parent other than you? 
+fields:
+  - no label: children[i].include_other_parent
+    datatype: yesnoradio
+---
+id: child third parent guardian
+question: |
+  % if children[i].include_other_parent == True:
+  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have a parent or guardian other than you and ${children[i].parents[0].name.full(middle='full')}?
+  % else:
+  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have a guardian other than you? 
+  % endif
+fields:
+  - no label: children[i].include_third_parent_guardian
+    datatype: yesnoradio
+---
+id: child custody haver
+question: |
+  % if children[i].include_other_parent == False and children[i].include_third_parent_guardian == False:
+  Does anyone other than you have physical custody over ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  % else:
+  Does anyone else have physical custody over ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  % endif
+fields:
+  - no label: children[i].include_custody_haver
+    datatype: yesnoradio
+---
+id: parent name
+question: |
+  % if j == 0:
+  What is the other parent or guardian's name?
+  % elif j == 1:
+  What is the additional parent or guardian's name?
+  % elif j == 2:
+  What is the name of the person with custody over ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  % endif
+fields:
+  - First: children[i].parents[j].name.first
+  - Middle: children[i].parents[j].name.middle
+    required: False
+  - Last: children[i].parents[j].name.last
+  - Suffix: children[i].parents[j].name.suffix
+    code: |
+      name_suffix()
+    required: False 
+---
+id: other parent agree
+question: |
+  Does ${children[i].parents[j].name.full(middle='full')} agree to ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s name change?
+fields:
+  - no label: children[i].parents[j].agree
+    datatype: yesnomaybe
+---
+id: other parent notarized signature
+continue button field: children[i].parents[j].notarized_signature
+question: |
+  About ${children[i].parents[j].name.full(middle='full')}'s signature
+subquestion: |
+  ${children[i].parents[j].name.full(middle='full')} will need to sign the *Request for Name Change – Child Information* form in front of a Notary Public.
+  
+  You can find a Notary Public at a bank or currency exchange, and in some libraries.
+
+  There is often a fee of up to $5 per signature.
+---
+id: other parent address known
+question: |
+  Do you know ${children[i].parents[j].name.full(middle='full')}'s address?
+fields:
+  - no label: children[i].parents[j].address_known
+    datatype: yesnoradio
+---
+id: other parent address
+question: |
+  What is ${children[i].parents[j].name.full(middle='full')}'s address?
+fields:
+  - Street address: children[i].parents[j].address.address
+    address autocomplete: True
+  - Address line 2: children[i].parents[j].address.unit
+    required: False
+  - City: children[i].parents[j].address.city
+  - State: children[i].parents[j].address.state
+    code: |
+      states_list() 
+  - ZIP code: children[i].parents[j].address.zip
+---
+id: notice waiver info
+continue button field:  children[i].parents[j].notice_waiver_info  
+question: |
+  About notice and waiver
+subquestion: |
+  When you change a child's name, you are usually required to notify any other parent, guardian, or custodian. You provide "notice" by giving them a copy of the name change request forms. If you do not know where they live, you can publish "notice" of the name change request in a newspaper.
+
+  You can ask the court to waive (skip) this notice if you believe that notice or publication would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination.
+---
+id: other parent risk check
+question: |
+  Are you worried that giving notice to ${children[i].parents[j].name.full(middle='full')} of the name change request would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination?
+fields:
+  - no label: children[i].parents[j].risk_check
+    datatype: yesnoradio
+---
+reconsider: True
+#This code block handles logic for the generating the text of the waiver reason question
+code: |
+  parent_list_generator.clear()
+  notice_waiver_hardship = False
+  parents_to_list = False
+  notice_would_be_published = False
+  any_risk = False
+  if children.number_gathered() == 1:  
+    if children[0].include_other_parent == True:
+      if children[0].parents[0].agree == False:
+        if children[0].parents[0].risk_check == True:
+          parent_list_generator.append(children[0].parents[0])
+          notice_waiver_hardship = True
+          parents_to_list = True
+          any_risk = True
+        if children[0].parents[0].address_known == False:
+          notice_would_be_published = True
+    if children[0].include_third_parent_guardian == True:
+      if children[0].parents[1].agree == False:
+        if children[0].parents[1].risk_check == True:
+          parent_list_generator.append(children[0].parents[1])
+          notice_waiver_hardship = True
+          parents_to_list = True
+          any_risk = True
+        if children[0].parents[1].address_known == False:
+          notice_would_be_published = True
+    if children[0].include_custody_haver == True:
+      if children[0].parents[2].agree == False:
+        if children[0].parents[2].risk_check == True:
+          parent_list_generator.append(children[0].parents[2])
+          notice_waiver_hardship = True
+          parents_to_list = True
+          any_risk = True
+        if children[0].parents[2].address_known == False:
+          notice_would_be_published = True
+  else:
+    for child in children:
+      if child.include_other_parent == True:
+        if child.parents[0].agree == False:
+          if child.parents[0].address_known == False:
+            notice_would_be_published = True
+          if child.parents[0].risk_check == True:
+            any_risk = True
+      if child.include_third_parent_guardian == True:      
+        if child.parents[1].agree == False:
+          if child.parents[1].address_known == False:
+            notice_would_be_published = True
+          if child.parents[1].risk_check == True:
+            any_risk = True
+      if child.include_custody_haver == True:
+        if child.parents[2].agree == False:
+          if child.parents[2].address_known == False:
+            notice_would_be_published = True
+          if child.parents[2].risk_check == True:
+            any_risk = True
+            
+  waiver_reason_logic = True
+---
+id: want to publish check
+question: |
+  % if interview_type == "child":
+  % if children.number_gathered() == 1:
+  Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk of harm or discrimination?
+  % else:
+  Are you concerned publishing notice of these name changes would put your children at risk of harm or discrimination?
+  % endif
+  % else:
+  ADULT NAME CHANGE TEXT
+  % endif
+subquestion: |
+  Since you do not know the address of all parents, guardians, or custodians you would need to notify of this name change, you may have to publish notice in a local newspaper. However, you can file a motion requesting you not be required to publish notice.
+fields:
+  - no label: dont_want_to_publish
+    datatype: yesnoradio
+---
+id: waiver reason
+question: |
+  % if interview_type == "child":
+  % if children.number_gathered() == 1:
+  % if notice_would_be_published == True:
+  Why would publishing notice of the name change request ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk?
+  % else:
+  Why would giving notice to ${comma_and_list(parents_to_list)} of the name change request put ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk?
+  % endif
+  % else:
+  % if notice_would_be_published == True: 
+  Why would publishing notice of the name change request put your children at risk?
+  % else:
+  Why would giving notice of the name change request put your children at risk?
+  % endif
+  % endif
+  % else:
+  ADULT NAME CHANGE TEXT
+  % endif
+subquestion: |
+  ${collapse_template(notice_waiver_example)}
+fields:
+  - Reasons to waive notice: waiver_reason
+    input type: area
+---
+template: notice_waiver_example
+subject: |
+  **What should my answer look like?**
+content: |  
+  % if interview_type == "child":
+  % if children.number_gathered() == 1:
+  This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
+  % else:
+  This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put your children at risk of physcial harm or discrimination.
+  % endif
+
+  Here are some examples: 
+  
+  "I need to change ${children[0].name.full(middle='full')}'s name to ${children[0].new.name.full(middle='full')} because we are trying to get away from my ex-boyfriend. He has abused ${children[0].name.full(middle='full')} in the past. I am afraid he will hurt ${children[0].name.full(middle='full')} if he learns about this name change request."
+  
+  "${children[0].name.full(middle='full')} wants to change their name to ${children[0].new.name.full(middle='full')} as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
+  % else:
+  ADULT NAME CHANGE TEXT
+  % endif
+---
+id: other parent notice method
+question: |
+  How will you give ${children[i].parents[j].name.full(middle='full')} notice of this name change request?
+subquestion: |
+  Notice is the way you tell other parents and guardians about the name change and court dates.
+
+  You can give notice by certified mail, by publication in local newspaper, or by asking the sheriff to deliver a copy of the forms to the other parents or custodian.
+field: children[i].parents[j].receive_method 
+choices:
+  - I will give notice of this Request and the scheduled court date by certified mail.: mail
+  - I will give notice of this Request and the scheduled court date by service of process by sheriff.: sheriff
+  - I will publish notice of this Request in a local newspaper.: newspaper
+---
+id: published notice info
+continue button field: children[i].parents[j].published_notice_info 
+question: |
+  About published notice
+subquestion: |
+  If ${children[i].parents[j].name.full(middle='full')} cannot be found, you must ask a local newspaper to publish notice of the name change request once a week for three weeks in a row.
+
+  This program will make a *Publication Notice of Court Date for Request for Name Change.* You must file it with the Circuit Clerk before you publish the notice in a newspaper.
+
+  Ask the Circuit Clerk for a court date at least 8 weeks from when you file the Publication Notice.
+---
+id: child safety address
+question: |
+  Do you want to use the alternate mailing address for ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+subquestion: |
+  The safe mailing address you entered is:
+  
+  ${safe_address.line_one(bare=True)}
+  ${safe_address.line_two()}
+fields:
+  - no label: children[i].use_safe_address
+    datatype: yesnoradio
+---
+id: your contact information
+question: |
+  What is your contact information?
+subquestion: |
+  ${ collapse_template(contact_info_help) }  
+fields:  
+  - Phone number: users[0].phone_number
+    datatype: al_international_phone
+    required: False
+  - label: |
+      I have an email address
+    field: users[0].has_email_address      
+    datatype: yesnoradio
+  - note: |
+      This email address will appear on your court forms. Be sure to check 
+      this email daily, otherwise you may miss important information about 
+      your case.
+    show if: x.has_email_address      
+  - Email address: users[0].email    
+    datatype: email
+    show if: 
+      variable: users[0].has_email_address
+      is: True
+validation code: |
+  if (not showifdef('users[0].phone_number') and \
+      (users[0].has_email_address == False)):
+    validation_error(word("You need to provide at least one contact method."), field="users[0].other_contact_method")
+---
+template: contact_info_help
+subject: |
+  **Why do I need to include this?**
+content: |  
+  The court must be able to reach you, so you need to include some contact information.
+---
+id: filing county
+question: |
+  Which county are you filing the name change request in?
+fields:
+  - no label: trial_court_index
+    code: |
+      ilao_court_county_lookup(court_list)
+validation code: |
+  if trial_court_index == "-1":
+    trial_court = court_list.as_court('trial_court', 15)
+  else:
+    trial_court = court_list.as_court('trial_court', trial_court_index)
+---
+code: |
+  trial_court_index
+  filing_county = trial_court.address.county
+---
+template: signature_help
+subject: |
+  **What does it mean to sign the *Request for Name Change*?**
+content: |  
+  By signing your *Request for Name Change*, you are certifying that:
+  
+  * Everything on the form is true and correct, and
+  * You understand that making a false statement on the form is perjury, which can result in criminal penalties.
+  
+  See the [**Code of Civil Procedure, 735 ILCS 5/1-109**](https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm), for more information.
+---
+id: download page get docs screen
+event: get_docs_screen
+question: |
+  Download
+subquestion: |
+  Document templates pending
+---
+#The next questions will be in the shared yml, this is for testing purposes
+id: criminal history intro
+continue button field: criminal_history_intro
+question: |
+  Criminal history
+subquestion: |
+  % if interview_type == "adult":
+  To request a name change in Illinois, a person needs to tell the court about any criminal history they may have.
+  % else:
+  To request a name change for a child, you must tell the court about any criminal history the child may have.
+  % endif
+
+
+  TO DO: Add more information
+---
+id: pending arrests
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  Do you have any arrests for which charges have not been filed?
+  % else:
+  Does your spouse have any arrests for which charges have not been filed?
+  % endif
+  % else:
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any arrests for which charges have not been filed?
+  % endif
+subquestion: |
+  ADD INFO
+fields:
+  - no label: x[i].pending_arrests
+    datatype: yesnoradio
+---
+id: pending charges
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  Do you have any pending misdemeanor or felony charges?
+  % else:
+  Do your spouse have any pending misdemeanor or felony charges?
+  % endif
+  % else:
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any pending misdemeanor or felony charges?
+  % endif
+subquestion: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  In other words, do you have any ongoing criminal cases against you for misdemeanor or felony offenses?
+  % else:
+    In other words, does your spouse have any ongoing criminal cases against them for misdemeanor or felony offenses?
+  % endif
+  % else:
+    In other words, does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any ongoing criminal cases against them for misdemeanor or felony offenses?
+  % endif
+fields:
+  - no label: x[i].pending_charges
+    datatype: yesnoradio
+---
+id: misdemeanors
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  Do you have any convictions or were you placed on probation for any misdemeanors?
+  % else:
+  Does your spouse have any convictions or were they placed on probation for any misdemeanors?
+  % endif
+  % else:
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?
+  % endif
+subquestion: |
+  These can be misdemeanors in Illinois or any other state.
+fields:
+  - no label: x[i].misdemeanors
+    datatype: yesnoradio
+  - Were all of these misdemeanors pardoned?: x[i].misdemeanor_pardon
+    datatype: yesnoradio
+    show if:
+      variable: x[i].misdemeanors
+      is: True
+---
+id: felonies
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  Do you have any convictions or were you placed on probation for any felonies?
+  % else:
+  Does your spouse have any convictions or were they placed on probation for any felonies?
+  % endif
+  % else:
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?
+  % endif
+subquestion: |
+  These can be felonies in Illinois or any other state.
+fields:
+  - no label: x[i].felonies
+    datatype: yesnoradio
+  - Were all of these felonies pardoned?: x[i].felony_pardon
+    datatype: yesnoradio
+    show if:
+      variable: x[i].felonies
+      is: True
+---
+id: registries
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  Do you have any convictions or were you placed on probation for a crime that required you register?
+  % else:
+  Do your spouse have any convictions or were they placed on probation for a crime that required them register?
+  % endif
+  % else:
+  Do ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?
+  % endif
+subquestion: |
+  These include crimes that require registration under the:
+  
+  * Sex Offender Registration Act
+  * Murderer and Violent Offender Against Youth Act, or
+  * Arsonist Registration Act.
+
+  % if interview_type == 'adult':
+  % if i == 0:
+  **Important**: If you have been placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
+  % else:
+  **Important**: If they have been placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
+  % endif
+  % else:
+  **Important**: If they have been placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change their name** unless one of these exceptions apply:
+  % endif
+  
+  * Marriage
+  * Religious beliefs
+  * Status as a victim of trafficking
+  * **{Gender-related identity}**
+
+  These can be Illinois registries or similar registries in any other state.
+fields:
+  - no label: x[i].registry
+    datatype: yesnoradio
+  - Which of these exceptions apply?: x[i].registry_exceptions
+    datatype: checkboxes
+    choices:
+      - Marriage: Marriage 
+      - Religious beliefs: Religious beliefs
+      - Status as a victim of trafficking: Status as a victim of trafficking
+      - Gender-related identity: Gender-related identity
+    show if:
+      variable: x[i].registry
+      is: True
+---
+terms:
+  - "Gender-related identity": |
+      The Illinois Human Rights Act states that gender-identity does not need to be the same as the  sex designated at birth.
+---
+id: id theft
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+  % if i == 0:
+  Do you have any convictions or were you placed on probation for identity theft?
+  % else:
+  Do your spouse have any convictions or were they placed on probation for identity theft?
+  % endif
+  % else:
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?
+  % endif
+subquestion: |
+  This includes **identity theft** or **aggravated identity theft**.
+  
+  These can be in Illinois or any other state.
+
+  % if interview_type == 'adult':
+  % if i == 0:
+  You can still request a name change even if you answer **Yes**.
+  % else:
+  Your spouse can still request a name change even if you answer **Yes**.
+  % endif
+  % else:
+  You can still request a name change for ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) even if you answer **Yes**.
+  % endif
+fields:
+  - no label: x[i].id_theft
+    datatype: yesnoradio
+---
+id: child conviction intro
+continue button field: child_conviction_intro
+question: |
+  Criminal history details
+subquestion: |
+  For these convictions or probations of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}), you must enter more information::
+  
+  % if children[i].felonies:
+   * Felony convictions or probations
+  % endif
+  % if children[i].registry:
+   * **{Offenses requiring registration}**
+  % endif
+  % if children[i].id_theft:
+   * Identification theft or Aggravated identity theft
+  % endif
+---
+terms:
+  - "Offenses requiring registration": |
+      These include crimes that require registration under the:
+  
+       * Sex Offender Registration Act
+       * Murderer and Violent Offender Against Youth Act, or
+       * Arsonist Registration Act.
+---
+id: conviction details
+question: |
+  % if i == 0:
+  Conviction details
+  % else:
+  More conviction details
+  % endif
+subquestion: |
+  For any of the following convictions or probations of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}), you must enter more information:
+  
+  % if children[i].felonies:
+   * Felony convictions or probations
+  % endif
+  % if children[i].registry:
+   * **{Offenses requiring registration}**
+  % endif
+  % if children[i].id_theft:
+   * Identification theft or Aggravated identity theft
+  % endif
+fields:
+  - Offense description: children[i].convictions[j].name.text
+    maxlength: 30
+  - Date of conviction or probation: children[i].convictions[j].date
+    datatype: date
+    max: ${ today().format("yyyy-MM-dd") }
+  - Sentence received: children[i].convictions[j].sentence
+    maxlength: 30
+  - Date sentence completed: children[i].convictions[j].completed_date
+    datatype: date
+    max: ${ today().format("yyyy-MM-dd") }
+  - Pardoned?: children[i].convictions[j].pardoned
+    datatype: yesnoradio
+
+---
+id: any other convictions
+question: |
+  Are there other convictions?
+subquestion: |
+  For these convictions or probations of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}), you must enter more information on your name change request:
+  
+  % if children[i].felonies:
+   * Felony convictions or probations
+  % endif
+  % if children[i].registry:
+   * **{Offenses requiring registration}**
+  % endif
+  % if children[i].id_theft:
+   * Identification theft or Aggravated identity theft
+  % endif
+  
+  So far you have told us about:
+  
+  % for conviction in children[i].convictions:
+   * ${conviction.name.text} on ${conviction.date}
+  % endfor
+fields:
+  - "Add another conviction or probation?": children[i].convictions.there_is_another
+    datatype: yesnoradio
+---
+id: children there is another
+question: |
+  Do you want to change the name of another child?
+subquestion: |
+  So far you have told us about ${comma_and_list(children)}.
+fields:
+  - no label: children.there_is_another
+    datatype: yesnoradio
+---
+id: registry kickout
+event: registry_kickout
+question: |
+  Sorry
+subquestion: |
+  A person who committed crimes that require registration and is not pardoned cannot request a name change with this program. It may result in a felony.
+  
+  These include crimes that require registration under the:
+  
+  * Sex Offender Registration Act
+  * Murderer and Violent Offender Against Youth Act, or
+  * Arsonist Registration Act.
+  
+  Click **Back** if you made a mistake. Or you can talk with a lawyer to discuss your options. Use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
+buttons:
+  - Exit: exit
+  - Restart: restart
+
+---
+section: Case information
+id: case review screen
+event: section_case
+question: |
+  Case information
+subquestion: |
+  Edit your answers below.
+review:
+  - Edit: started_living_in_illinois
+    button: |
+      **When did you start living in Illinois?**
+      ${started_living_in_illinois}
+  - Edit: use_safe_address 
+    button: |
+      **Do you want to use an alternate mailing address?**
+      ${word(yesno(use_safe_address))}
+  - Edit: safe_address.address
+    button: |
+     **Alternate mailing address:**
+     ${safe_address.on_one_line(bare=True)}
+---
+section: Children and parents
+id: children review screen
+event: section_children
+question: |
+  Children and parents
+subquestion: |
+  Edit your answers below.
+review:
+  - Edit: children.revisit
+    button: |
+      **Children: (Edit to change names, addresses, and other guardians)**
+
+      % for my_var in children:
+        * ${ my_var.new.name.full(middle="full")} (AKA ${my_var.name.full(middle='full')})
+      % endfor
+  - Edit: dont_want_to_publish
+    button: |
+      % if children.number_gathered() == 1:
+      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
+      % else:
+      **Are you concerned publishing notice of these name changes would put your children at risk?**
+      % endif
+      ${word(yesno(dont_want_to_publish))}
+    show if: notice_would_be_published == True and any_risk == False
+  - Edit: waiver_reason
+    button: |
+      % if notice_would_be_published == True:
+      % if children.number_gathered() == 1:
+      **Why would publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
+      % else:
+      **Why would publishing notice of these name changes would put your children at risk?**
+      % endif
+      % else:
+      % if children.number_gathered() == 1:
+      **Why would giving notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
+      % else:
+      **Why would giving notice of these name changes would put your children at risk?**
+      % endif
+      % endif
+      ${waiver_reason}
+    show if: any_risk == True or dont_want_to_publish == True
+---
+id: children review
+continue button field: children.revisit
+question: |
+  Edit the information about the children
+subquestion: |
+  ${ children.table }
+
+  ${ children.add_action() }
+---
+id: children table
+table: children.table
+rows: children
+columns:
+  - Current name: |
+      row_item.name.full(middle="full") if defined("row_item.name.first") else ""
+  - New name, address, and other guardians: |
+      action_button_html(url_action(row_item.attr_name("review_child")), label="Edit", icon="pencil-alt")
+delete buttons: True
+confirm: True
+---
+id: child review
+continue button field: x.review_child
+generic object: ALIndividual
+question: |
+  Edit ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s information
+review: 
+  - Edit: x.name.first
+    button: |
+      **Current name:**
+      ${x.name.full(middle='full')}
+  - Edit: x.new.name.first
+    button: |
+      **New name:**
+      ${x.new.name.full(middle='full')}
+  - Edit: x.birth_date
+    button: |
+      **Birth date:**
+      ${x.birth_date}
+  - Edit: x.user_relationship
+    button: |
+      **Your relationship to ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}):**
+      % if x.user_relationship == "bio":
+      Biological parent
+      % elif x.user_relationship == "adopt":
+      Adoptive parent
+      % elif x.user_relationship == "custody":
+      Legal guardian
+      % elif x.user_relationship == "years":
+      They have lived in my home for 3 years and are recognized as my adopted child.
+      % elif x.user_relationship == "other":
+      Other
+      % endif
+  - Edit: x.pending_arrests
+    button: |
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any arrests for which charges have not been filed?**
+      ${word(yesno(x.pending_arrests))}
+  - Edit: x.pending_charges
+    button: |
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any pending misdemeanor or felony charges?**
+      ${word(yesno(x.pending_charges))}
+  - Edit: x.misdemeanors
+    button: |
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?**
+      % if x.misdemanors == False:
+      No
+      % else:
+      % if x.misdemeanor_pardon == True:
+      Yes, and they have been pardoned of them
+      % else:
+      Yes, and they have not been pardoned for all of them
+      % endif
+      % endif
+  - Edit: x.felonies
+    button: |
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?**
+      % if x.felonies == False:
+      No
+      % else:
+      % if x.felony_pardon == True:
+      Yes, and they have been pardoned of them
+      % else:
+      Yes, and they have not been pardoned for all of them
+      % endif
+      % endif
+  - Edit: x.registry
+    button: |
+      **Do ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?**
+      % if x.registry == False:
+      No
+      % elif x.registry_exceptions.all_false():
+      Yes
+      % else:
+      Yes, but the following exception or exceptions apply:
+      
+      % if x.registry_exceptions['Marriage']:
+      * Marriage
+      % endif
+      % if x.registry_exceptions['Religious beliefs']:
+      * Religious beliefs
+      % endif
+      % if x.registry_exceptions['Status as a victim of trafficking']:
+      * Status as a victim of trafficking
+      % endif
+      % if x.registry_exceptions['Gender-related identity']:
+      * Gender-related identity
+      % endif
+      % endif
+  - Edit: x.id_theft
+    button: |
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?**
+      ${word(yesno(x.id_theft))}
+  - Edit: x.change_reasons
+    button: |
+      **Why are you changing this child's name from "${x.name.full(middle='full')}" to "${x.new.name.full(middle='full')}?"**
+      
+      % if x.change_reasons['user_wants']:
+      * I want to change their name.
+      % endif
+      % if x.change_reasons['child_wants']:
+      * They want to change their name.
+      % endif
+      % if x.change_reasons['other']:
+      * ${x.other_reason}
+      % endif
+  - Edit: x.birth_place.in_america
+    button: |
+      **${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s birth place:**
+      % if x.birth_place.in_america == True:
+      ${x.birth_place.city}, ${end_in_county(x.birth_place.county)}, ${x.birth_place.state}
+      % else:
+      ${x.birth_place.city}, ${x.birth_place.country}
+      % endif
+  - Edit: x.use_safe_address
+    button: |
+      **Do you want to use ${safe_address.on_one_line(bare=True)} as ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s address?**
+      ${word(yesno(x.use_safe_address))}
+    show if: use_safe_address 
+  - Edit: x.address.address
+    button: |
+      **${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s address:**
+      ${x.address.on_one_line(bare=True)}
+    show if: use_safe_address == False or x.use_safe_address == False
+  - Edit: x.include_other_parent
+    button: |
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have a biological or adoptive parent other than you?**
+      ${word(yesno(x.include_other_parent))}
+  - Edit: x.parents[0].name.first
+    button: |
+      **Other parent's name:**
+      ${x.parents[0].name.full(middle='full')}
+    show if: x.include_other_parent == True
+  - Edit: x.parents[0].agree
+    button: |
+      **Does ${x.parents[0].name.full(middle='full')} agree to the name change?**
+      ${word(yesno(x.parents[0].agree))}
+    show if: x.include_other_parent == True
+  - Edit: x.parents[0].address_known
+    button: |
+      **Do you know ${x.parents[0].name.full(middle='full')}'s address?**
+      ${word(yesno(x.parents[0].address_known))}
+    show if: x.include_other_parent == True
+  - Edit: x.parents[0].address.address
+    button: |
+      **${x.parents[0].name.full(middle='full')}'s address:**
+      ${x.parents[0].address.on_one_line(bare=True)}
+    show if: x.include_other_parent == True and x.parents[0].address_known == True
+  - Edit: x.parents[0].risk_check 
+    button: |
+      **Are you worried that giving notice to ${x.parents[0].name.full(middle='full')} or publishing notice of the name change request would put ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) at risk?**
+      ${word(yesno(x.parents[0].risk_check))}
+    show if: x.include_other_parent == True and x.parents[0].agree == False
+  - Edit: x.parents[0].receive_method
+    button: |
+      **How will you give ${x.parents[0].name.full(middle='full')} notice of this name change request?**
+      % if x.parents[0].receive_method == "mail":
+      I will give notice of this Request and the scheduled court date by certified mail.
+      % elif x.parents[0].receive_method == "sheriff":
+      I will give notice of this Request and the scheduled court date by service of process by sheriff.
+      % elif x.parents[0].receive_method == "newspaper":
+      I will publish notice of this Request in a local newspaper.
+      % endif
+    show if: x.include_other_parent == True and x.parents[0].agree == False and x.parents[0].risk_check == False
+  - Edit: x.include_third_parent_guardian
+    button: |
+      % if x.include_other_parent == True:
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have a parent or guardian other than you and ${x.parents[0].name.full(middle='full')}?**
+      % else:
+      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have a guardian other than you?**
+      % endif
+      ${word(yesno(x.include_third_parent_guardian))}
+  - Edit: x.parents[1].name.first
+    button: |
+      **Other parent or guardian's name:**
+      ${x.parents[1].name.full(middle='full')}
+    show if: x.include_third_parent_guardian == True      
+  - Edit: x.parents[1].agree
+    button: |
+      **Does ${x.parents[1].name.full(middle='full')} agree to the name change?**
+      ${word(yesno(x.parents[1].agree))}
+    show if: x.include_third_parent_guardian == True
+  - Edit: x.parents[1].address_known
+    button: |
+      **Do you know ${x.parents[1].name.full(middle='full')}'s address?**
+      ${word(yesno(x.parents[1].address_known))}
+    show if: x.include_third_parent_guardian == True
+  - Edit: x.parents[1].address.address
+    button: |
+      **${x.parents[1].name.full(middle='full')}'s address:**
+      ${x.parents[1].address.on_one_line(bare=True)}
+    show if: x.include_third_parent_guardian == True and x.parents[1].address_known == True
+  - Edit: x.parents[1].risk_check 
+    button: |
+      **Are you worried that giving notice to ${x.parents[1].name.full(middle='full')} or publishing notice of the name change request would put ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) at risk?**
+      ${word(yesno(x.parents[1].risk_check))}
+    show if: x.include_third_parent_guardian == True and x.parents[1].agree == False
+  - Edit: x.parents[1].receive_method
+    button: |
+      **How will you give ${x.parents[1].name.full(middle='full')} notice of this name change request?**
+      % if x.parents[1].receive_method == "mail":
+      I will give notice of this Request and the scheduled court date by certified mail.
+      % elif x.parents[1].receive_method == "sheriff":
+      I will give notice of this Request and the scheduled court date by service of process by sheriff.
+      % elif x.parents[1].receive_method == "newspaper":
+      I will publish notice of this Request in a local newspaper.
+      % endif
+    show if: x.include_third_parent_guardian == True and x.parents[1].agree == False and x.parents[1].risk_check == False
+  - Edit: x.include_custody_haver
+    button: |
+      % if x.include_other_parent == False and x.include_third_parent_guardian == False:
+      **Does anyone other than you have physical custody over ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})?**
+      % else:
+      **Does anyone else have physical custody over ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})?**
+      % endif
+      ${word(yesno(x.include_custody_haver))}
+  - Edit: x.parents[2].name.first
+    button: |
+      **Name of other person with custody:**
+      ${x.parents[2].name.full(middle='full')}
+    show if: x.include_custody_haver == True      
+  - Edit: x.parents[2].agree
+    button: |
+      **Does ${x.parents[2].name.full(middle='full')} agree to the name change?**
+      ${word(yesno(x.parents[2].agree))}
+    show if: x.include_custody_haver == True
+  - Edit: x.parents[2].address_known
+    button: |
+      **Do you know ${x.parents[2].name.full(middle='full')}'s address?**
+      ${word(yesno(x.parents[2].address_known))}
+    show if: x.include_custody_haver == True
+  - Edit: x.parents[2].address.address
+    button: |
+      **${x.parents[2].name.full(middle='full')}'s address:**
+      ${x.parents[2].address.on_one_line(bare=True)}
+    show if: x.include_custody_haver == True and x.parents[2].address_known == True
+  - Edit: x.parents[2].risk_check 
+    button: |
+      **Are you worried that giving notice to ${x.parents[2].name.full(middle='full')} or publishing notice of the name change request would put ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) at risk?**
+      ${word(yesno(x.parents[2].risk_check))}
+    show if: x.include_custody_haver == True and x.parents[2].agree == False
+  - Edit: x.parents[2].receive_method
+    button: |
+      **How will you give ${x.parents[2].name.full(middle='full')} notice of this name change request?**
+      % if x.parents[2].receive_method == "mail":
+      I will give notice of this Request and the scheduled court date by certified mail.
+      % elif x.parents[2].receive_method == "sheriff":
+      I will give notice of this Request and the scheduled court date by service of process by sheriff.
+      % elif x.parents[2].receive_method == "newspaper":
+      I will publish notice of this Request in a local newspaper.
+      % endif
+    show if: x.include_custody_haver == True and x.parents[2].agree == False and x.parents[2].risk_check == False
+---
+section: Your information
+id: user review screen
+event: section_user
+question: |
+  Your information
+subquestion: |
+  Edit your answers below.
+review:
+  - Edit: use_safe_address 
+    button: |
+      **Do you want to use an alternate mailing address?**
+      ${word(yesno(use_safe_address))}
+  - Edit: safe_address.address
+    button: |
+      **Alternate mailing address:**
+      ${safe_address.on_one_line(bare=True)}
+    show if: use_safe_address
+  - Edit: users[0].address.address
+    button: |
+      **Your address:**
+      ${users[0].address.on_one_line(bare=True)}
+  - Edit: users[0].has_email_address
+    button: |
+      **Your contact information:**
+      % if users[0].phone_number != "" and users[0].has_email_address == True:
+      
+      * Phone number: ${phone_number_formatted(users[0].phone_number)}
+      * Email address: ${users[0].email}
+      % elif users[0].phone_number != "" and users[0].has_email_address == False:
+      ${phone_number_formatted(users[0].phone_number)}
+      % elif users[0].phone_number == "" and users[0].has_email_address == True:
+      ${users[0].email}
+      % endif
+---
+section: Filing information
+id: filing review screen
+event: section_filing
+question: |
+  Filing information
+subquestion: |
+  Edit your answers below.
+review:
+  - label: Edit
+    fields:
+      - trial_court_index
+      - recompute:
+        - filing_county
+    button: |
+      **Which county are you filing the name change in?**
+      ${end_in_county(filing_county)}
+  - Edit: e_signature
+    button: |
+      **Do you want to add your e-signature to your forms?**
+      ${word(yesno(e_signature))}
