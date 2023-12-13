@@ -24,6 +24,7 @@ objects:
   - children[i].birth_place: ALAddress
   - parent_list_generator: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual)
   - children[i].convictions: DAList.using(object_type=Thing, there_are_any=True)
+  - court_list: ALCourtLoader.using(file_name='docassemble.ILAO:data/sources/il_courts.xlsx')
 ---
 # Road map
 sections:
@@ -39,6 +40,7 @@ code: |
   ilao_easy_form_url = "https://www.illinoislegalaid.org/legal-information/name-change-child"
   github_user = 'IllinoisLegalAidOnline'
   github_repo_name = 'docassemble-NameChangeChild'
+  allowed_courts = ['Circuit']
 ---
 # interview order block
 mandatory: True
@@ -64,10 +66,18 @@ code: |
   children.gather()
   waiver_reason_logic
   if any_risk == True:
-    waiver_reason
+    if waiver_reason['order'] == True:
+      if protective_order.any_true():
+        order_against_parents
+    if waiver_reason['hardship'] == True:
+      hardship_reason
   elif notice_would_be_published == True and any_risk == False:
     if dont_want_to_publish == True:
-      waiver_reason
+      if waiver_reason['order'] == True:
+        if protective_order.any_true():
+          order_against_parents
+      if waiver_reason['hardship'] == True:
+        hardship_reason
     
   nav.set_section('section_user')
   if use_safe_address == False:
@@ -77,6 +87,10 @@ code: |
   
   nav.set_section('section_filing')
   filing_county
+  if trial_court_index == -1 and notice_would_be_published == True and (any_risk == False or dont_want_to_publish == False):
+    cook_district
+  if notice_would_be_published == True and any_risk == False and dont_want_to_publish == False:
+    courthouse_info
   e_signature
   
   nav.set_section('section_download')
@@ -586,8 +600,18 @@ fields:
   - no label: children[i].parents[j].risk_check
     datatype: yesnoradio
 ---
-reconsider: True
 #This code block handles logic for the generating the text of the waiver reason question
+depends on:
+  - children[i].include_other_parent
+  - children[i].include_third_parent_guardian
+  - children[i].include_custody_haver
+  - children[i].parents[j].agree
+  - children[i].parents[j].risk_check
+  - children[i].parents[j].address_known
+  - children[i].parents[j].name.first
+  - children[i].parents[j].name.middle
+  - children[i].parents[j].name.last
+  - children[i].parents[j].name.suffix
 code: |
   parent_list_generator.clear()
   notice_waiver_hardship = False
@@ -596,7 +620,7 @@ code: |
   any_risk = False
   if children.number_gathered() == 1:  
     if children[0].include_other_parent == True:
-      if children[0].parents[0].agree == False:
+      if children[0].parents[0].agree != True:
         if children[0].parents[0].risk_check == True:
           parent_list_generator.append(children[0].parents[0])
           notice_waiver_hardship = True
@@ -605,7 +629,7 @@ code: |
         if children[0].parents[0].address_known == False:
           notice_would_be_published = True
     if children[0].include_third_parent_guardian == True:
-      if children[0].parents[1].agree == False:
+      if children[0].parents[1].agree != True:
         if children[0].parents[1].risk_check == True:
           parent_list_generator.append(children[0].parents[1])
           notice_waiver_hardship = True
@@ -614,7 +638,7 @@ code: |
         if children[0].parents[1].address_known == False:
           notice_would_be_published = True
     if children[0].include_custody_haver == True:
-      if children[0].parents[2].agree == False:
+      if children[0].parents[2].agree != True:
         if children[0].parents[2].risk_check == True:
           parent_list_generator.append(children[0].parents[2])
           notice_waiver_hardship = True
@@ -625,24 +649,26 @@ code: |
   else:
     for child in children:
       if child.include_other_parent == True:
-        if child.parents[0].agree == False:
+        if child.parents[0].agree != True:
           if child.parents[0].address_known == False:
             notice_would_be_published = True
           if child.parents[0].risk_check == True:
             any_risk = True
       if child.include_third_parent_guardian == True:      
-        if child.parents[1].agree == False:
+        if child.parents[1].agree != True:
           if child.parents[1].address_known == False:
             notice_would_be_published = True
           if child.parents[1].risk_check == True:
             any_risk = True
       if child.include_custody_haver == True:
-        if child.parents[2].agree == False:
+        if child.parents[2].agree != True:
           if child.parents[2].address_known == False:
             notice_would_be_published = True
           if child.parents[2].risk_check == True:
             any_risk = True
-            
+      
+
+   
   waiver_reason_logic = True
 ---
 id: want to publish check
@@ -657,30 +683,102 @@ question: |
   ADULT NAME CHANGE TEXT
   % endif
 subquestion: |
+  % if interview_type == "child":
   Since you do not know the address of all parents, guardians, or custodians you would need to notify of this name change, you may have to publish notice in a local newspaper. However, you can file a motion requesting you not be required to publish notice.
+  % else:
+  ADULT NAME CHANGE TEXT
+  % endif
 fields:
   - no label: dont_want_to_publish
     datatype: yesnoradio
 ---
-id: waiver reason
+id: publication waiver reasons
+question: |
+  Why do you need a notice waiver?
+subquestion: |
+  % if interview_type == 'adult':
+  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the person whose name would be changed.
+  % else:
+  % if children.number_gathered() == 1:
+  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the child whose name would be changed.
+  % else:
+  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the children whose name would be changed.
+  % endif
+  % endif
+  
+  A hardship can be many things. It can include fear of:
+  
+  * Physical violence,
+  * Discrimination,
+  * Harassment,
+  * Bullying, or
+  * Threats of violence.
+fields:
+  - no label: waiver_reason
+    datatype: checkboxes
+    minlength: 1
+    choices:
+      - I have or did have protection from a court order.: order
+      - I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.: hardship
+    validation messages:
+      minlength: |
+        Please select at least one or click < Back if none apply.
+---
+id: protective order type
+question: |
+  What kind of court protection do or did you have?
+subquestion: |
+  You can enter details about the order on another screen.
+
+  If you do any of these kinds of orders, you can click **Back** and change your answer.
+fields:
+  - I have or did have protection from: protective_order
+    datatype: checkboxes
+    minlength: 1
+    none of the above: False
+    choices:
+      - An Order of Protection: op
+      - A Stalking No Contact Order: snco
+      - A Civil No Contact Order: cnco
+      - A Protective order in someone else's criminal case: other_criminal
+      - Being a protected person under someone else's bail conditions: bail
+      - A similar protective order outside Illinois: other_order
+    validation messages:
+      minlength: |
+        Please select at least one or click < Back if none apply.
+  - In which state was the protective order? (not Illinois): other_order_state
+    maxlength: 25
+    show if:
+      variable: protective_order['other_order']
+      is: True
+---
+# add question if protective order is against one of the other parents
+id: order against parents
 question: |
   % if children.number_gathered() == 1:
+  Is the protective order against one of the parents, guardians, or custodians of your child?
+  % else:
+  Is the protective order against one of the parents, guardians, or custodians of your children?
+  % endif
+fields:
+  - no label: order_against_parents
+    datatype: yesnoradio
+---
+id: hardship reason
+question: |
+  % if interview_type == "child":
   % if notice_would_be_published == True:
-  Why would publishing notice of the name change request ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk?
+  Explain why publication would be a hardship (optional)
   % else:
-  Why would giving notice to ${comma_and_list(parents_to_list)} of the name change request put ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk?
+  Explain why giving notice would be a hardship (optional)
   % endif
   % else:
-  % if notice_would_be_published == True: 
-  Why would publishing notice of the name change request put your children at risk?
-  % else:
-  Why would giving notice of the name change request put your children at risk?
-  % endif
+  ADULT NAME CHANGE TEXT
   % endif
 subquestion: |
   ${collapse_template(notice_waiver_example)}
 fields:
-  - Reasons to waive notice: waiver_reason
+  - Notice and publication would be a hardship because:: hardship_reason
     input type: area
 ---
 template: notice_waiver_example
@@ -688,17 +786,17 @@ subject: |
   **What should my answer look like?**
 content: |  
   % if interview_type == "child":
-  % if x.number_gathered() == 1:
-  This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put ${x[0].new.name.full(middle='full')} (AKA ${x[0].name.full(middle='full')}) at risk of physical harm or discrimination.
+  % if children.number_gathered() == 1:
+  This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
   % else:
   This explanation will go on your *Motion to Waive Notice & Publication*. You should explain why giving or publishing notice would put your children at risk of physcial harm or discrimination.
   % endif
 
   Here are some examples: 
   
-  "I need to change ${x[0].name.full(middle='full')}'s name to ${x[0].new.name.full(middle='full')} because we are trying to get away from my ex-boyfriend. He has abused ${x[0].name.full(middle='full')} in the past. I am afraid he will hurt ${x[0].name.full(middle='full')} if he learns about this name change request."
+  "I need to change ${children[0].name.full(middle='full')}'s name to ${children[0].new.name.full(middle='full')} because we are trying to get away from my ex-boyfriend. He has abused ${children[0].name.full(middle='full')} in the past. I am afraid he will hurt ${children[0].name.full(middle='full')} if he learns about this name change request."
   
-  "${x[0].name.full(middle='full')} wants to change their name to ${x[0].new.name.full(middle='full')} as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
+  "${children[0].name.full(middle='full')} wants to change their name to ${children[0].new.name.full(middle='full')} as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
   % else:
   ADULT NAME CHANGE TEXT
   % endif
@@ -778,6 +876,7 @@ question: |
   Which county are you filing the name change request in?
 fields:
   - no label: trial_court_index
+    datatype: integer
     code: |
       ilao_court_county_lookup(court_list)
 validation code: |
@@ -789,6 +888,45 @@ validation code: |
 code: |
   trial_court_index
   filing_county = trial_court.address.county
+---
+depends on:
+  - trial_court_index
+  - cook_district
+code: |
+  if trial_court_index == -1:
+    trial_court = court_list.as_court('trial_court', cook_district)
+  else:
+    trial_court = court_list.as_court('trial_court', trial_court_index)
+    
+  court_name = str(trial_court.name)
+  court_street_address = str(trial_court.address.address)
+  court_city = str(trial_court.address.city)
+  court_state = str(trial_court.address.state)
+  court_zip = str(trial_court.address.zip)
+  filing_county = str(trial_court.address.county)
+  courthouse_info = court_name + ", " + court_street_address + ", " + court_city + ", " + court_state + " " + court_zip
+---
+id: Cook County district
+question: |
+  In which Cook County courthouse is your case?
+subquestion: |
+  This information should be found near the top of your court papers.
+
+  ${ collapse_template(cook_district_help) }  
+field: cook_district
+choices:
+  - First Municipal District, Daley Center, 50 W. Washington Street, Chicago: 15
+  - Second Municipal District, 5600 Old Orchard Road, Skokie: 16
+  - Third Municipal District, 2121 Euclid Avenue, Rolling Meadows: 17
+  - Fourth Municipal District, 1500 Maybrook Drive, Maywood: 18
+  - Fifth Municipal District, 10220 S. 76th Avenue, Bridgeview: 19
+  - Sixth Municipal District, 16501 South Kedzie Parkway, Markham: 20
+---
+template: cook_district_help
+subject: |
+  **What if I am not sure?**
+content: |  
+  Visit **[Illinois Court Help](https://www.ilcourthelp.gov/)**, or you can call or text (833) 411-1121 for assistance.
 ---
 template: signature_help
 subject: |
@@ -1182,23 +1320,50 @@ review:
       % endif
       ${word(yesno(dont_want_to_publish))}
     show if: notice_would_be_published == True and any_risk == False
-  - Edit: waiver_reason
+  - Edit:  waiver_reason
     button: |
-      % if notice_would_be_published == True:
-      % if children.number_gathered() == 1:
-      **Why would publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
-      % else:
-      **Why would publishing notice of these name changes would put your children at risk?**
+      **Why do you need a notice waiver?**
+      
+      % if waiver_reason['order'] == True:
+      * I have or did have protection from a court order.
       % endif
-      % else:
-      % if children.number_gathered() == 1:
-      **Why would giving notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
-      % else:
-      **Why would giving notice of these name changes would put your children at risk?**
+      % if waiver_reason['hardship'] == True:
+      * I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.
       % endif
+    show if: any_risk == True or (notice_would_be_published == True and showifdef(dont_want_to_publish) == True)
+  - Edit:  protective_order
+    button: |
+      **What kind of court protection do or did you have?**
+      
+      % if protective_order['op'] == True:
+      * An Order of Protection
       % endif
-      ${waiver_reason}
-    show if: any_risk == True or dont_want_to_publish == True
+      % if protective_order['snco'] == True:
+      * A Stalking No Contact Order
+      % endif
+      % if protective_order['cnco'] == True:
+      * A Civil No Contact Order
+      % endif
+      % if protective_order['other_criminal'] == True:
+      * A Protective order in someone else's criminal case
+      % endif
+      % if protective_order['bail'] == True:
+      * Being a protected person under someone else's bail conditions
+      % endif
+      % if protective_order['other_order'] == True:
+      * A similar protective order in ${other_order_state}
+      % endif
+    show if: waiver_reason['order'] == True and (any_risk == True or (notice_would_be_published == True and dont_want_to_publish == True))
+  - Edit: order_against_parents
+    button: |
+       **Is the protective order against another parent, guardian, or custodian?**
+       ${word(yesno(order_against_parents))}
+    show if: protective_order.any_true() == True and (waiver_reason['order'] == True and (any_risk == True or (notice_would_be_published == True and dont_want_to_publish == True))) 
+  - Edit: hardship_reason
+    button: |
+      **Notice and publication would be a hardship because:**
+      ${hardship_reason}
+    show if: waiver_reason['hardship'] == True and (any_risk == True or (notice_would_be_published == True and dont_want_to_publish == True))
 ---
 id: children review
 continue button field: children.revisit
@@ -1370,7 +1535,7 @@ review:
     button: |
       **Are you worried that giving notice to ${x.parents[0].name.full(middle='full')} or publishing notice of the name change request would put ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) at risk?**
       ${word(yesno(x.parents[0].risk_check))}
-    show if: x.include_other_parent == True and x.parents[0].agree == False
+    show if: x.include_other_parent == True and x.parents[0].agree != True
   - Edit: x.parents[0].receive_method
     button: |
       **How will you give ${x.parents[0].name.full(middle='full')} notice of this name change request?**
@@ -1381,7 +1546,7 @@ review:
       % elif x.parents[0].receive_method == "newspaper":
       I will publish notice of this Request in a local newspaper.
       % endif
-    show if: x.include_other_parent == True and x.parents[0].agree == False and x.parents[0].risk_check == False
+    show if: x.include_other_parent == True and x.parents[0].agree != True and x.parents[0].risk_check == False
   - Edit: x.include_third_parent_guardian
     button: |
       % if x.include_other_parent == True:
@@ -1414,7 +1579,7 @@ review:
     button: |
       **Are you worried that giving notice to ${x.parents[1].name.full(middle='full')} or publishing notice of the name change request would put ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) at risk?**
       ${word(yesno(x.parents[1].risk_check))}
-    show if: x.include_third_parent_guardian == True and x.parents[1].agree == False
+    show if: x.include_third_parent_guardian == True and x.parents[1].agree != True
   - Edit: x.parents[1].receive_method
     button: |
       **How will you give ${x.parents[1].name.full(middle='full')} notice of this name change request?**
@@ -1425,7 +1590,7 @@ review:
       % elif x.parents[1].receive_method == "newspaper":
       I will publish notice of this Request in a local newspaper.
       % endif
-    show if: x.include_third_parent_guardian == True and x.parents[1].agree == False and x.parents[1].risk_check == False
+    show if: x.include_third_parent_guardian == True and x.parents[1].agree != True and x.parents[1].risk_check == False
   - Edit: x.include_custody_haver
     button: |
       % if x.include_other_parent == False and x.include_third_parent_guardian == False:
@@ -1458,7 +1623,7 @@ review:
     button: |
       **Are you worried that giving notice to ${x.parents[2].name.full(middle='full')} or publishing notice of the name change request would put ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) at risk?**
       ${word(yesno(x.parents[2].risk_check))}
-    show if: x.include_custody_haver == True and x.parents[2].agree == False
+    show if: x.include_custody_haver == True and x.parents[2].agree != True
   - Edit: x.parents[2].receive_method
     button: |
       **How will you give ${x.parents[2].name.full(middle='full')} notice of this name change request?**
@@ -1469,7 +1634,7 @@ review:
       % elif x.parents[2].receive_method == "newspaper":
       I will publish notice of this Request in a local newspaper.
       % endif
-    show if: x.include_custody_haver == True and x.parents[2].agree == False and x.parents[2].risk_check == False
+    show if: x.include_custody_haver == True and x.parents[2].agree != True and x.parents[2].risk_check == False
 ---
 section: Your information
 id: user review screen
@@ -1521,6 +1686,23 @@ review:
     button: |
       **Which county are you filing the name change in?**
       ${end_in_county(filing_county)}
+  - Edit: cook_district
+    button: |
+      **In which Cook County courthouse is your case?**
+      % if cook_district == "15":
+      First Municipal District, Daley Center, 50 W. Washington Street, Chicago
+      % elif cook_district == "16":
+      Second Municipal District, 5600 Old Orchard Road, Skokie
+      % elif cook_district == "17":
+      Third Municipal District, 2121 Euclid Avenue, Rolling Meadows
+      % elif cook_district == "18":
+      Fourth Municipal District, 1500 Maybrook Drive, Maywood
+      % elif cook_district == "19":
+      Fifth Municipal District, 10220 S. 76th Avenue, Bridgeview
+      % elif cook_district == "20":
+      Sixth Municipal District, 16501 South Kedzie Parkway, Markham
+      % endif
+    show if: trial_court_index == -1 and notice_would_be_published == True and (any_risk == True or dont_want_to_publish == False)
   - Edit: e_signature
     button: |
       **Do you want to add your e-signature to your forms?**
