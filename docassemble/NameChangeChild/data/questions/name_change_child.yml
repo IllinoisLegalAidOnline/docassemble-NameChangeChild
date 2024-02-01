@@ -586,7 +586,7 @@ id: parent name
 question: |
   % if j == 0:
   What is the first other parent, guardian, or custodian's name?
-  % elif j == 1:
+  % else:
   What is the additional parent, guardian, or custodian's name?
   % endif
 fields:
@@ -1180,21 +1180,21 @@ objects:
   - motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 objects:
-  - children[i].additional_parents: ALDocumentBundle.using(elements=[item.parent_info_sheet for item in children[i].parents], filename="additional_parent.pdf", title = "Additional parents", enabled=True)
+  - children[i].additional_parents_bundle: ALDocumentBundle.using(elements=[item.parent_info_sheet for item in children[i].parents], filename="additional_parent.pdf", title = "Additional parents", enabled=True)
   #- children[i].one_notice_set: ALDocumentBundle.using(elements=[item.notice_of_court_date for item in children[i].parents, filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
 objects:
-  - all_parents: ALDocumentBundle.using(elements=[item.additional_parents for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
+  - all_parents_bundle: ALDocumentBundle.using(elements=[item.additional_parents_bundle for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
 ---
 #I don't think that the list comprehension bundles have to be listed separately from the other AlDocument and ALDocumentBundle blocks, but I made them separate nonetheless.
 objects:
-  - children_information: ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
+  - children_information_bundle: ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
   #- additional_custodians: ALDocumentBundle.using(elements=[item.additional_custodian for item in children], filename="additional_custodian.pdf", title = "Additional custodian")
   #- notices: ALDocumentBundle.using(elements=[item.notice_of_court_date for item in parent_list_generator], filename="notice_of_court_date.pdf", title = "Notice of court date")
   #- notices: ALDocumentBundle.using(elements=[item.one_notice_set for item in children], filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
 objects:
-  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information, all_parents], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
+  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information_bundle, all_parents_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
   - order_bundle: ALDocumentBundle.using(elements=[order, order_to_waive_notice], filename="name_change_order_bundle.pdf", title="Order", enabled=True)
   #See the comments in the code block creating the parent_list_generator list to see why this bundle does not use list comprehension.
   - notice_bundle: ALDocumentBundle.using(elements=[notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="notice_of_court_date_bundle.pdf", title="Notice of court date for request for name change")
@@ -1224,36 +1224,48 @@ code: |
     child.has_custodian = False
     child.has_guardian = False
     child.child_information.enabled = True
-    child.additional_parents.enabled = False
-    
-    
+    child.additional_parents_bundle.enabled = False
+
+    # new logic test
     if child.any_other_parents == True:
-      child.parents[0].parent_info_sheet.enabled = False
-      child.additional_parents.enabled = False
-      #for parent in children[child_loop_index].parents:
-      #  parent.parent_info_sheet.enabled = False
-      #  if j != 0:
-      #    children[i].additional_parents.enabled = True
-      #    all_parents.enabled = True
-      #    if parent.parent_type == "Custodian":
-      #      children[i].has_custodian = True
-      #    else:
-      #      children[i].has_guardian = True
-      #    parent.parent_info_sheet.enabled = True
-      
-      
-      parent_loop_index = 1
-      while parent_loop_index < child.parents.number_gathered():
-        child.parents[parent_loop_index].parent_info_sheet.enabled = True
-        child.additional_parents.enabled = True
-        all_parents.enabled = True
-        if child.parents[parent_loop_index].parent_type == "Custodian":
-          child.has_custodian = True
-        else:
-          child.has_guardian = True
-        test_me = True
-        parent_loop_index += 1 
-    #child_loop_index += 1      
+      if child.parents.number_gathered() > 1:
+        for parent in child.parents:
+          parent.parent_info_sheet.enabled = True
+          if parent.parent_type == "Custodian":
+            child.has_custodian = True
+          else:
+            child.has_guardian = True
+        child.parents[0].parent_info_sheet.enabled = False
+
+
+  #  removed for testing with new logic 
+  #  if child.any_other_parents == True:
+  #    child.parents[0].parent_info_sheet.enabled = False
+  #    child.additional_parents.enabled = False
+  #    #for parent in children[child_loop_index].parents:
+  #    #  parent.parent_info_sheet.enabled = False
+  #    #  if j != 0:
+  #    #    children[i].additional_parents.enabled = True
+  #    #    all_parents.enabled = True
+  #    #    if parent.parent_type == "Custodian":
+  #    #      children[i].has_custodian = True
+  #    #    else:
+  #    #      children[i].has_guardian = True
+  #    #    parent.parent_info_sheet.enabled = True
+  #    
+  #    
+  #    parent_loop_index = 1
+  #    while parent_loop_index < child.parents.number_gathered():
+  #      child.parents[parent_loop_index].parent_info_sheet.enabled = True
+  #      child.additional_parents.enabled = True
+  #      all_parents_bundle.enabled = True
+  #      if child.parents[parent_loop_index].parent_type == "Custodian":
+  #        child.has_custodian = True
+  #      else:
+  #        child.has_guardian = True
+  #      test_me = True
+  #      parent_loop_index += 1 
+  #  #child_loop_index += 1      
     
   #enabled_enabler = True
   #for child in children:
@@ -1923,8 +1935,8 @@ attachment:
   pdf template file: Request_for_Name_Change_Additonal_Parent_Minor.pdf
   fields: 
     - "case_number": ${""}
-    - "is_parent_or_guardian": ${True if children[i].parents[j].parent_type != "custodian" else False}
-    - "is_custodian": ${True if children[i].parents[j].parent_type != "custodian" else False}
+    - "is_parent_or_guardian": ${True if children[i].parents[j].parent_type != "Custodian" else False}
+    - "is_custodian": ${True if children[i].parents[j].parent_type == "Custodian" else False}
     - "parental_first": ${children[i].parents[j].name.first}
     - "parental_middle": ${children[i].parents[j].name.middle}
     - "parental_last": ${children[i].parents[j].name.last if children[i].parents[j].name.suffix == "" else (children[i].parents[j].name.last + " " + children[i].parents[j].name.suffix)}
