@@ -101,6 +101,9 @@ code: |
   #if child_notice_would_be_published == True and any_risk == False and request_waiver == False:
   #  courthouse_info
   e_signature
+  on_change_test = False
+  if any_to_notify == True and parent_list_generator.number_gathered() > 1:  
+    about_notices
   
   nav.set_section('section_download')
   set_progress(100)
@@ -673,6 +676,12 @@ depends on:
   - children[i].parents[j].name.middle
   - children[i].parents[j].name.last
   - children[i].parents[j].name.suffix
+  - children[i].parents[j].address.address
+  - children[i].parents[j].address.unit
+  - children[i].parents[j].address.city
+  - children[i].parents[j].address.state
+  - children[i].parents[j].address.zip
+  - children[i].parents[j]receive_method
 code: |
   #Parent list generator is used to gather the information of parents who the user must notify. This list is generated because just iterating through all known parents would include empty objects and parents who do not need to be notified.
   parent_list_generator.clear()
@@ -1025,6 +1034,13 @@ subject: |
 content: |  
   The court must be able to reach you, so you need to include some contact information.
 ---
+id: notice info
+continue button field: about_notices
+question: |
+  About notices
+subquestion: |
+  Each *Notice of court date* form lists up to 3 people to notify. Be sure to send a copy to **each person** on the notice.
+---
 id: filing county
 question: |
   Which county are you filing the name change request in?
@@ -1098,6 +1114,8 @@ event: get_docs_screen
 question: |
   Download
 subquestion: |  
+  On change block running? ${word(yesno(on_change_test))}  
+    
   Your forms are ready. View and download your forms below. Click **Make changes** to fix any mistakes.
   
   The Instructions page has important information. You can read it to find out what to do next.
@@ -1186,6 +1204,10 @@ objects:
 objects:
   - all_parents: ALDocumentBundle.using(elements=[item.additional_parents for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
 ---
+on change:
+  children[i].name.first: |
+    undefine('children_information.enabled')
+---
 #I don't think that the list comprehension bundles have to be listed separately from the other AlDocument and ALDocumentBundle blocks, but I made them separate nonetheless.
 objects:
   - children_information: ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
@@ -1204,11 +1226,17 @@ objects:
   -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, notice_bundle, publication_notice], filename="name_change_child.pdf", title="All forms")
   -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, notice_bundle, publication_notice], filename="name_change_child.pdf", title="All forms")
 ---
+id: test page
+continue button field: test_page
+question: |
+  Hello
+subquestion: |
+  The code is hitting this point!
+---
 code: |
   instructions.enabled = True
   request.enabled = True
   order.enabled = True
-  
   
   #The name change request form has space for 4 children. Any more children must be on the additional children template.
   if children.number_gathered() > 4:
@@ -1220,7 +1248,6 @@ code: |
   #child_loop_index = 0 
   #while child_loop_index < children.number_gathered():
   for child in children:  
-    
     child.has_custodian = False
     child.has_guardian = False
     child.child_information.enabled = True
@@ -1254,7 +1281,8 @@ code: |
         test_me = True
         parent_loop_index += 1 
     #child_loop_index += 1      
-    
+    else:
+      child.parents[0].parent_info_sheet.enabled = False
   #enabled_enabler = True
   #for child in children:
   #  child.has_custodian = False
@@ -1840,7 +1868,7 @@ attachment:
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
 ---
 objects:
-  - children[i].child_information: ALDocument.using(title="Child information", filename="child_information.pdf", has_addendum=False)
+  - children[i].child_information: ALDocument.using(title="Child information", filename="child_information.pdf", has_addendum=False, enabled=True)
   - children[i].parents[j].parent_info_sheet: ALDocument.using(title="Parent information", filename="additional_parent.pdf", has_addendum=False)
   - parent_list_generator[i].notice_of_court_date: ALDocument.using(title="Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False)
 ---
