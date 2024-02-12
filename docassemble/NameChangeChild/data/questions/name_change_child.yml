@@ -30,7 +30,6 @@ objects:
 # Road map
 sections:
   - section_intro: Start
-  - section_case: Case information
   - section_user: Your information
   - section_children: Children and parents
   - section_filing: Filing information
@@ -53,16 +52,16 @@ code: |
   how_to_use
   accept_terms
   
-  nav.set_section('section_case')
   if user_is_adult == False:
     not_an_adult_kickout
   if six_months_in_illinois == False:
     not_enough_illinois_kickout
-  if time_in_illinois.years < 0.5:
-    not_enough_illinois_kickout
+  
     
     
   nav.set_section('section_user')
+  if time_in_illinois.years < 0.5:
+    not_enough_illinois_kickout
   set_progress(20)
   users[0].name.first
   use_safe_address
@@ -226,8 +225,8 @@ code: |
           children[i].parents[j].receive_method 
       if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
         children[i].parents[j].published_notice_info 
-      elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
-        children[i].parents[j].published_notice_info 
+      #elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
+        #children[i].parents[j].published_notice_info 
   else:
     children[i].parents.there_is_another = False
   children[i].parents[j].complete = True
@@ -260,7 +259,7 @@ subquestion: |
   
   ${ collapse_template(help_example) }  
 
-  Click on **{green words}** to learn what they mean. Some questions have a question mark in a circle ${ fa_icon("question-circle", color_css="#0DCAF0" ) } that helps explain things.
+  Click on **{green words}** to learn what they mean. Some pages have a question mark in a circle ${ fa_icon("question-circle", color_css="#0dcaf0" ) } that helps explain things.
 ---
 template: help_example
 
@@ -334,34 +333,40 @@ fields:
     datatype: ThreePartsDate
     alMax: ${today()}
 ---
-id: use safe address check
+id: hide address
 question: |
-  Do you want to use an alternate mailing address on your court forms?
+  Do you want to keep your address hidden?
 subquestion: |
-  When you request a name change for a child, you have to list your address and the child's address on the court papers. The court may send you important information about your case.
-
-  If you are worried that sharing your address or the child's address would put you, the child, or a member of their household at risk of physical harm, you can use an alternate mailing address.
+  You do not need to list your address on your court papers if this would put you or your household at risk.
+  
+  You can use an address where you can receive court notices instead.
 fields:
   - no label: use_safe_address
     datatype: yesnoradio
 ---
-id: safe address
+id: user address
 question: |
-  % if use_safe_address == True:
-  What is your alternate mailing address?
+  % if use_safe_address == False:
+  What is your mailing address?
   % else:
-  What is your address?
+  What is your home address?
+  % endif
+subquestion: |
+  % if use_safe_address:
+  **This address will appear on your court papers.** You may receive court notices and documents about your case at this address.
+  % else:
+  **This address will appear on your court papers.** If you do not want this, click **Back** to keep your address hidden.
   % endif
 fields:
-  - Street address: users[0].address
+  - Street address: users[0].address.address
     address autocomplete: True
-  - Address line 2: users[0].unit
+  - Address line 2: users[0].address.unit
     required: False
-  - City: users[0].city
-  - State: users[0].state
+  - City: users[0].address.city
+  - State: users[0].address.state
     code: |
       states_list() 
-  - ZIP code: users[0].zip
+  - ZIP code: users[0].address.zip
 ---
 id: child name
 question: |
@@ -547,7 +552,6 @@ fields:
     code: |
       states_list() 
   - ZIP code: children[i].address.zip
-  - County: children[i].address.county
 ---
 id: any other parents
 question: |
@@ -991,12 +995,11 @@ question: |
 subquestion: |
   Notice is the way you tell other parents and guardians about the name change and court dates.
 
-  You can give notice by certified mail, by publication in local newspaper, or by asking the sheriff to deliver a copy of the forms to the other parents or custodian.
+  You can give notice by certified mail or by asking the sheriff to deliver a copy of the forms to the other parents or custodian. You can only notify them by newspaper if you do not know their address.
 field: children[i].parents[j].receive_method 
 choices:
   - I will give notice of this Request and the scheduled court date by certified mail.: mail
   - I will give notice of this Request and the scheduled court date by service of process by sheriff.: sheriff
-  - I will publish notice of this Request in a local newspaper.: newspaper
 ---
 id: published notice info
 continue button field: children[i].parents[j].published_notice_info 
@@ -1011,8 +1014,10 @@ subquestion: |
 ---
 id: child safety address
 question: |
-  Do you want to use the alternate mailing address for ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  Do you want to use the safe mailing address for ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
 subquestion: |
+  You need to put an address for your child on the court forms, but it does not have to be the address where they live.
+  
   The safe mailing address you entered is:
   
   ${users[0].address.line_one(bare=True)}
@@ -1030,9 +1035,7 @@ fields:
   - Phone number: users[0].phone_number
     datatype: al_international_phone
     required: False
-  - label: |
-      Do you have an email address?
-    field: users[0].has_email_address      
+  - Do you have an email address?: users[0].has_email_address      
     datatype: yesnoradio
   - note: |
       This email address will appear on your court forms. Be sure to check 
@@ -1135,7 +1138,7 @@ subquestion: |
   % if parent_list_generator.number_gathered() > 3:
   Each notice form has room for 3 signatures. Be sure to send a copy to **each person** on each notice.
   % else:
-  The notice form has room for 3 signatures. Be sure to send a copy to **each person** on the notice
+  The notice form has room for 3 signatures. Be sure to send a copy to **each person** on the notice.
   % endif
 ---
 id: download page get docs screen
@@ -1145,7 +1148,7 @@ question: |
 subquestion: |  
   Your forms are ready. View and download your forms below. Click **Make changes** to fix any mistakes.
   
-  The Instructions page has important information. You can read it to find out what to do next.
+  The Instructions have important information. You can read them to find out what to do next.
   
   This program does not file your forms with the court. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
   
@@ -1268,8 +1271,8 @@ objects:
 ---
 #The notice bundle was behaving oddly. It was making duplicates of its first entry rather than including all entries. My makeshift solution is to list the documents individually in these bundles.
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, change_order_bundle, order_to_waive_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, change_order_bundle, order_to_waive_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
@@ -1304,6 +1307,8 @@ code: |
             child.has_custodian = True
           elif parent.parent_type != "ignore":
             child.has_guardian = True
+        child.parents[0].parent_info_sheet.enabled = False
+      else:
         child.parents[0].parent_info_sheet.enabled = False
     else:
       child.parents[0].parent_info_sheet.enabled = False
@@ -1958,7 +1963,7 @@ attachment:
     - "other_parent_first": ${children[i].parents[0].name.first if children[i].any_other_parents == True else ""}
     - "other_parent_middle": ${children[i].parents[0].name.middle if children[i].any_other_parents == True else ""}
     - "other_parent_last": ${children[i].parents[0].name.last if children[i].parents[0].name.suffix == "" else (children[i].parents[0].name.last + " " + children[i].parents[0].name.suffix)}
-    - "other_parent_address": ${children[i].parents[0].address.on_one_line(bare=True) if children[i].parents[0].address_known == True and children[i].any_other_parents == True else ""}
+    - "other_parent_address": ${children[i].parents[0].address.on_one_line(bare=True) if children[i].parents[0].address_known == True and children[i].any_other_parents == True else "Unknown"}
     - "other_parent_disagree": ${ True if children[i].parents[0].agree == False and children[i].any_other_parents == True else False}
     - "other_parent_dont_know": ${True if children[i].parents[0].agree is None and children[i].any_other_parents == True else False}
     - "other_parent_agree": ${children[i].parents[0].agree if children[i].any_other_parents == True else False}
@@ -1981,9 +1986,9 @@ attachment:
     - "parental_first": ${children[i].parents[j].name.first}
     - "parental_middle": ${children[i].parents[j].name.middle}
     - "parental_last": ${children[i].parents[j].name.last if children[i].parents[j].name.suffix == "" else (children[i].parents[j].name.last + " " + children[i].parents[j].name.suffix)}
-    - "parental_address": ${children[i].parents[j].address.on_one_line(bare=True) if children[i].parents[j].address_known else ""}
-    - "certified_or_sheriff": ${True if children[i].parents[j].receive_method == "mail" or children[i].parents[j].receive_method == "sheriff" else False}
-    - "publication_notice": ${True if children[i].parents[j].receive_method == "newspaper" or children[i].parents[1].address_known == False else False}
+    - "parental_address": ${children[i].parents[j].address.on_one_line(bare=True) if children[i].parents[j].address_known else "Unknown"}
+    - "certified_or_sheriff": ${True if children[i].parents[j].address_known == True and children[i].parents[j].agree != True else False}
+    - "publication_notice": ${True if children[i].parents[1].address_known == False and children[i].parents[j].agree != True and any_risk == False else False}
     - "rights_terminated": ${False}
     - "disagrees": ${ True if children[i].parents[j].agree == False else False}
     - "dont_know": ${True if children[i].parents[j].agree is None else False}
@@ -2340,11 +2345,23 @@ fields:
   - Date of conviction or probation: x[i].convictions[j].date
     datatype: date
     max: ${ today().format("yyyy-MM-dd") }
+    min: |
+      % if interview_type == 'adult':
+      ${today().minus(years=110)}
+      % else:
+      ${x[i].birth_date}
+      % endif
   - Sentence received: x[i].convictions[j].sentence
     maxlength: 30
   - Date sentence completed: x[i].convictions[j].completed_date
     datatype: date
     max: ${ today().format("yyyy-MM-dd") }
+    min: |
+      % if interview_type == 'adult':
+      ${today().minus(years=110)}
+      % else:
+      ${x[i].birth_date}
+      % endif
   - Pardoned?: x[i].convictions[j].pardoned
     datatype: yesnoradio
 validation code: |
@@ -2426,30 +2443,134 @@ buttons:
   - Exit: exit
   - Restart: restart
 ---
-section: Case information
-id: case review screen
-event: section_case
+id: review screen
+event: review_answers
 question: |
-  Case information
+  Review screen
 subquestion: |
   Edit your answers below.
-review:
+review: 
   - Edit: started_living_in_illinois
     button: |
       **When did you start living in Illinois?**
       ${started_living_in_illinois}
+  - Edit: users[0].name.first
+    button: |
+      **Your name:**
+      ${users[0].name.full(middle='full')}
   - Edit: use_safe_address 
     button: |
       **Do you want to use an alternate mailing address?**
       ${word(yesno(use_safe_address))}
   - Edit: users[0].address.address
     button: |
-     % if use_safe_address == True:
-     **Alternate mailing address:**
-     % else:
-     **Your address:**
-     % endif
-     ${users[0].address.on_one_line(bare=True)}
+      % if use_safe_address == True:
+      **Alternate mailing address:**
+      % else:
+      **Your address:**
+      % endif
+      ${users[0].address.on_one_line(bare=True)}
+  - Edit: users[0].has_email_address
+    button: |
+      **Your contact information:**
+      % if users[0].phone_number != "" and users[0].has_email_address == True:
+      
+      * Phone number: ${phone_number_formatted(users[0].phone_number)}
+      * Email address: ${users[0].email}
+      % elif users[0].phone_number != "" and users[0].has_email_address == False:
+      ${phone_number_formatted(users[0].phone_number)}
+      % elif users[0].phone_number == "" and users[0].has_email_address == True:
+      ${users[0].email}
+      % endif
+  - Edit: children.revisit
+    button: |
+      **Children: (Edit to change names, addresses, and other guardians)**
+
+      % for my_var in children:
+        * ${ my_var.new.name.full(middle="full")} (AKA ${my_var.name.full(middle='full')})
+      % endfor
+  - Edit: request_waiver
+    button: |
+      % if children.number_gathered() == 1:
+      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
+      % else:
+      **Are you concerned publishing notice of these name changes would put your children at risk?**
+      % endif
+      ${word(yesno(request_waiver))}
+    show if: child_notice_would_be_published == True and any_risk == False
+  - Edit:  waiver_reason
+    button: |
+      **Why do you need a notice waiver?**
+      
+      % if waiver_reason['order'] == True:
+      * I have or did have protection from a court order.
+      % endif
+      % if waiver_reason['hardship'] == True:
+      * I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.
+      % endif
+    show if: any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True)
+  - Edit:  protective_order
+    button: |
+      **What kind of court protection do or did you have?**
+      
+      % if protective_order['op'] == True:
+      * An Order of Protection
+      % endif
+      % if protective_order['snco'] == True:
+      * A Stalking No Contact Order
+      % endif
+      % if protective_order['cnco'] == True:
+      * A Civil No Contact Order
+      % endif
+      % if protective_order['other_criminal'] == True:
+      * A Protective order in someone else's criminal case
+      % endif
+      % if protective_order['bail'] == True:
+      * Being a protected person under someone else's bail conditions
+      % endif
+      % if protective_order['other_order'] == True:
+      * A similar protective order in ${other_order_state}
+      % endif
+    show if: waiver_reason['order'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
+  - Edit: order_against_parents
+    button: |
+       **Is the protective order against another parent, guardian, or custodian?**
+       ${word(yesno(order_against_parents))}
+    show if: protective_order.any_true() == True and (waiver_reason['order'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))) 
+  - Edit: hardship_text
+    button: |
+      **Notice and publication would be a hardship because:**
+      ${hardship_text}
+    show if: waiver_reason['hardship'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
+  - label: Edit
+    fields:
+      - trial_court_index
+      - recompute:
+        - filing_county
+    button: |
+      **Which county are you filing the name change in?**
+      ${end_in_county(filing_county)}
+  #- Edit: cook_district
+  #  button: |
+  #    **In which Cook County courthouse is your case?**
+  #    % if cook_district == "15":
+  #    First Municipal District, Daley Center, 50 W. Washington Street, Chicago
+  #    % elif cook_district == "16":
+  #    Second Municipal District, 5600 Old Orchard Road, Skokie
+  #    % elif cook_district == "17":
+  #    Third Municipal District, 2121 Euclid Avenue, Rolling Meadows
+  #    % elif cook_district == "18":
+  #    Fourth Municipal District, 1500 Maybrook Drive, Maywood
+  #    % elif cook_district == "19":
+  #    Fifth Municipal District, 10220 S. 76th Avenue, Bridgeview
+  #    % elif cook_district == "20":
+  #    Sixth Municipal District, 16501 South Kedzie Parkway, Markham
+  #    % endif
+  #  show if: trial_court_index == -1 and child_notice_would_be_published == True and (any_risk == True or request_waiver == False)
+  - Edit: e_signature
+    button: |
+      **Do you want to add your e-signature to your forms?**
+      ${word(yesno(e_signature))}
 ---
 section: Children and parents
 id: children review screen
@@ -2748,7 +2869,7 @@ review:
       % elif x.receive_method == "newspaper":
       I will publish notice of this Request in a local newspaper.
       % endif
-    show if: x.agree != True and x.risk_check == False
+    show if: x.agree != True and x.risk_check == False and x.address_known == False
 ---
 section: Your information
 id: user review screen
@@ -2758,6 +2879,14 @@ question: |
 subquestion: |
   Edit your answers below.
 review:
+  - Edit: started_living_in_illinois
+    button: |
+      **When did you start living in Illinois?**
+      ${started_living_in_illinois}
+  - Edit: users[0].name.first
+    button: |
+      **Your name:**
+      ${users[0].name.full(middle='full')}
   - Edit: use_safe_address 
     button: |
       **Do you want to use an alternate mailing address?**
