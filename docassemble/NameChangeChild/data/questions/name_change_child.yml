@@ -1186,30 +1186,6 @@ objects:
   - instructions: ALDocument.using(title="Instructions", filename="instructions.pdf", has_addendum=False)
   - request: ALDocument.using(title="Request for name change (minor children)", filename="minor_name_change_request.pdf", has_addendum=False)
   - additional_children: ALDocument.using(title="Additional children", filename="additional_children.pdf", has_addendum=False)
-  - additional_guardian_of_child_1: ALDocument.using(title = "Additional guardian of child 1", filename="additional_guardian_of_child_1.pdf", has_addendum=False)
-  - additional_custodian_of_child_1: ALDocument.using(title = "Additional custodian of child 1", filename="additional_custodian_of_child_1.pdf", has_addendum=False)
-  - additional_guardian_of_child_2: ALDocument.using(title = "Additional guardian of child 2", filename="additional_guardian_of_child_2.pdf", has_addendum=False)
-  - additional_custodian_of_child_2: ALDocument.using(title = "Additional custodian of child 2", filename="additional_custodian_of_child_2.pdf", has_addendum=False)
-  - additional_guardian_of_child_3: ALDocument.using(title = "Additional guardian of child 3", filename="additional_guardian_of_child_3.pdf", has_addendum=False)
-  - additional_custodian_of_child_3: ALDocument.using(title = "Additional custodian of child 3", filename="additional_custodian_of_child_3.pdf", has_addendum=False)
-  - additional_guardian_of_child_4: ALDocument.using(title = "Additional guardian of child 4", filename="additional_guardian_of_child_4.pdf", has_addendum=False)
-  - additional_custodian_of_child_4: ALDocument.using(title = "Additional custodian of child 4", filename="additional_custodian_of_child_4.pdf", has_addendum=False)
-  - additional_guardian_of_child_5: ALDocument.using(title = "Additional guardian of child 5", filename="additional_guardian_of_child_5.pdf", has_addendum=False)
-  - additional_custodian_of_child_5: ALDocument.using(title = "Additional custodian of child 5", filename="additional_custodian_of_child_5.pdf", has_addendum=False)
-  - additional_guardian_of_child_6: ALDocument.using(title = "Additional guardian of child 6", filename="additional_guardian_of_child_6.pdf", has_addendum=False)
-  - additional_custodian_of_child_6: ALDocument.using(title = "Additional custodian of child 6", filename="additional_custodian_of_child_6.pdf", has_addendum=False)
-  - additional_guardian_of_child_7: ALDocument.using(title = "Additional guardian of child 7", filename="additional_guardian_of_child_7.pdf", has_addendum=False)
-  - additional_custodian_of_child_7: ALDocument.using(title = "Additional custodian of child 7", filename="additional_custodian_of_child_7.pdf", has_addendum=False)
-  - additional_guardian_of_child_8: ALDocument.using(title = "Additional guardian of child 8", filename="additional_guardian_of_child_8.pdf", has_addendum=False)
-  - additional_custodian_of_child_8: ALDocument.using(title = "Additional custodian of child 8", filename="additional_custodian_of_child_8.pdf", has_addendum=False)
-  - additional_guardian_of_child_9: ALDocument.using(title = "Additional guardian of child 9", filename="additional_guardian_of_child_9.pdf", has_addendum=False)
-  - additional_custodian_of_child_9: ALDocument.using(title = "Additional custodian of child 9", filename="additional_custodian_of_child_9.pdf", has_addendum=False)
-  - additional_guardian_of_child_10: ALDocument.using(title = "Additional guardian of child 10", filename="additional_guardian_of_child_10.pdf", has_addendum=False)
-  - additional_custodian_of_child_10: ALDocument.using(title = "Additional custodian of child 10", filename="additional_custodian_of_child_10.pdf", has_addendum=False)
-  - additional_guardian_of_child_11: ALDocument.using(title = "Additional guardian of child 11", filename="additional_guardian_of_child_11.pdf", has_addendum=False)
-  - additional_custodian_of_child_11: ALDocument.using(title = "Additional custodian of child 11", filename="additional_custodian_of_child_11.pdf", has_addendum=False)
-  - additional_guardian_of_child_12: ALDocument.using(title = "Additional guardian of child 12", filename="additional_guardian_of_child_12.pdf", has_addendum=False)
-  - additional_custodian_of_child_12: ALDocument.using(title = "Additional custodian of child 12", filename="additional_custodian_of_child_12.pdf", has_addendum=False)
   - publication_notice: ALDocument.using(title = "Publication notice of court date", filename="publication_notice.pdf", has_addendum=False)
   - order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
   - order: ALDocument.using(title = "Order for name change (minor name change)", filename="order.pdf", has_addendum=False)
@@ -1258,7 +1234,6 @@ objects:
 #I don't think that the list comprehension bundles have to be listed separately from the other AlDocument and ALDocumentBundle blocks, but I made them separate nonetheless.
 objects:
   - children_information_bundle: ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
-  #- additional_custodians: ALDocumentBundle.using(elements=[item.additional_custodian for item in children], filename="additional_custodian.pdf", title = "Additional custodian")
   #- notices: ALDocumentBundle.using(elements=[item.notice_of_court_date for item in parent_list_generator], filename="notice_of_court_date.pdf", title = "Notice of court date")
   #- notices: ALDocumentBundle.using(elements=[item.one_notice_set for item in children], filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
@@ -1993,28 +1968,6 @@ attachment:
     - "disagrees": ${ True if children[i].parents[j].agree == False else False}
     - "dont_know": ${True if children[i].parents[j].agree is None else False}
     - "agrees": ${children[i].parents[j].agree}
----
-#attachment:
-#  variable name: children[i].additional_custodian[j]
-#  name: additional_custodian
-#  filename: additional_custodian
-#  skip undefined: True
-#  editable: False
-#  pdf template file: Request_for_Name_Change_Additonal_Parent_Minor.pdf
-#  fields: 
-#    - "case_number": ${""}
-#    - "is_parent_or_guardian": ${False}
-#    - "is_custodian": ${True}
-#    - "parental_first": ${children[i].parents[2].name.first}
-#    - "parental_middle": ${children[i].parents[2].name.middle}
-#    - "parental_last": ${children[i].parents[2].name.last if children[i].parents[2].name.suffix == "" else (children[i].parents[2].name.last + " " + children[i].parents[2].name.suffix)}
-#    - "parental_address": ${children[i].parents[2].address.on_one_line(bare=True) if children[i].parents[2].address_known else ""}
-#    - "certified_or_sheriff": ${True if children[i].parents[2].receive_method == "mail" or children[i].parents[2].receive_method == "sheriff" else False}
-#    - "publication_notice": ${True if children[i].parents[2].receive_method == "newspaper" or children[i].parents[2].address_known == False else False}
-#    - "rights_terminated": ${False}
-#    - "disagrees": ${ True if children[i].parents[2].agree == False else False}
-#    - "dont_know": ${True if children[i].parents[2].agree is None else False}
-#    - "agrees": ${children[i].parents[2].agree}
 ---
 attachment:
   variable name: parent_list_generator[i].notice_of_court_date[j]
