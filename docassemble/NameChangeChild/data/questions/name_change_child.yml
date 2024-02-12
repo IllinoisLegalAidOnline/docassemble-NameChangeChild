@@ -108,7 +108,7 @@ code: |
   set_progress(100)
   nav.set_section('section_download')
   #enabled_enabler
-  
+  #empty_bundles
   get_docs_screen
 ---
 #Gather loop for children list
@@ -1259,6 +1259,10 @@ objects:
   #- notices: ALDocumentBundle.using(elements=[item.notice_of_court_date for item in parent_list_generator], filename="notice_of_court_date.pdf", title = "Notice of court date")
   #- notices: ALDocumentBundle.using(elements=[item.one_notice_set for item in children], filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
+#code: |
+#  children_information_bundle = ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
+#  run_bundle_block = True
+---
 objects:
   - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information_bundle, all_parents_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
   #- order_bundle: ALDocumentBundle.using(elements=[order, order_to_waive_notice], filename="name_change_order_bundle.pdf", title="Order", enabled=True)
@@ -1271,7 +1275,14 @@ objects:
   -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, change_order_bundle, order_to_waive_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="name_change_child.pdf", title="All forms")
   -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, change_order_bundle, order_to_waive_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="name_change_child.pdf", title="All forms")
 ---
+#reconsider: True
+#code: |
+#  del(children_information_bundle)
+#  empty_bundles = True
+---
 code: |
+  
+
   instructions.enabled = True
   request.enabled = True
   order.enabled = True
@@ -2530,6 +2541,8 @@ subquestion: |
   If you have reached the end of the interview and need to add or delete a child, you will need to restart this program.
 
   ${ children.table }
+  
+  ${ children.add_action() }
 ---
 #add action is removed from subquestion due to issues with list comprehension in ALDocumentBundles. For posterity, here is the line:
 #${ children[i].parents.add_action() }
@@ -2541,6 +2554,8 @@ subquestion: |
   If you have reached the end of the interview and need to add or delete a parent, guardian, or custodian, you will need to restart this program.
   
   ${ children[i].parents.table }
+  
+  ${ children[i].parents.add_action() }
 ---
 # delete buttons are set to false due to ALDocumentBundle list comprehension issues
 id: children table
@@ -2551,7 +2566,7 @@ columns:
       row_item.name.full(middle="full") if defined("row_item.name.first") else ""
   - New name, address, and other guardians: |
       action_button_html(url_action(row_item.attr_name("review_child")), label="Edit", icon="pencil-alt")
-delete buttons: False
+delete buttons: True
 confirm: True
 ---
 #action_button_html(url_action(row_item.attr_name("review_parent")), label="Edit", icon="pencil-alt")
@@ -2564,7 +2579,7 @@ columns:
       row_item.name.full(middle='full') if defined("row_item.name.first") else ""
   - Address and other information: |
       action_button_html(url_action(row_item.attr_name("review_parent")), label="Edit", icon="pencil-alt")
-delete buttons: False
+delete buttons: True
 confirm: True
 ---
 id: child review
