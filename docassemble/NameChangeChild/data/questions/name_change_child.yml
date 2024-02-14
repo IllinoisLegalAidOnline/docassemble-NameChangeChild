@@ -163,6 +163,7 @@ code: |
       if children[i].any_other_parents == True:
         about_other_parentals
         children[i].parents.gather()
+        
             
    #Between the name change request form and the additional children form, there are space for 12 children. 
   if i == 11:
@@ -674,16 +675,25 @@ code: |
     if child.any_other_parents == True:
       if child.parents.number_gathered() > 0:
         for parent in child.parents:
+          #The following if statement is just included to ensure the parent address block is triggered if parent.address_known is set to true via review screen.
+          if parent.address_known == True:
+            parent.address.address
           if parent.agree != True:
+            #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
+            parent.notice_waiver_info  
             if parent.address_known == False:
               child_notice_would_be_published = True
+            #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
+            elif parent.risk_check == False:
+              parent.receive_method 
             if parent.risk_check == True:
               any_risk = True
             else:
               if parent.address_known == True:
                 any_to_notify = True
                 parent_list_generator.append(parent)
-
+          else:
+             parent.notarized_signature
   parent_list_generator.there_is_another = False 
   waiver_reason_logic = True
 ---
@@ -715,7 +725,7 @@ fields:
   - no label: request_waiver
     datatype: yesnoradio
 ---
-id: publication waiver reasons
+id: waiver reasons
 question: |
   Why do you need a notice waiver?
 subquestion: |
@@ -728,6 +738,14 @@ subquestion: |
   You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the children whose name would be changed.
   % endif
   % endif
+  A protective court order can include:
+  
+  * An Order of Protection,
+  * A Stalking No Contact Order,
+  * A Civil No Contact Order,
+  * A protective order in someone else's criminal case,
+  * Protection under someone else's bail conditions, or
+  * A similar protective order outside Illinois.
   
   A hardship can be many things. It can include fear of:
   
@@ -1145,18 +1163,18 @@ objects:
   - publication_notice: ALDocument.using(title = "Publication notice of court date", filename="publication_notice.pdf", has_addendum=False)
   - order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
   - order: ALDocument.using(title = "Order for name change (minor name change)", filename="order.pdf", has_addendum=False)
-  - notice_of_court_date: ALDocument.using(title = "Notice of court date for request for name change", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_2: ALDocument.using(title = "Notice of court date for request for name change 2", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_3: ALDocument.using(title = "Notice of court date for request for name change 3", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_4: ALDocument.using(title = "Notice of court date for request for name change 4", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_5: ALDocument.using(title = "Notice of court date for request for name change 5", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_6: ALDocument.using(title = "Notice of court date for request for name change 6", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_7: ALDocument.using(title = "Notice of court date for request for name change 7", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_8: ALDocument.using(title = "Notice of court date for request for name change 8", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_9: ALDocument.using(title = "Notice of court date for request for name change 9", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_10: ALDocument.using(title = "Notice of court date for request for name change 10", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_11: ALDocument.using(title = "Notice of court date for request for name change 11", filename="notice_of_court_date.pdf", has_addendum=False)
-  - notice_of_court_date_12: ALDocument.using(title = "Notice of court date for request for name change 12", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date: ALDocument.using(title = "Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_2: ALDocument.using(title = "Notice of court date 2", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_3: ALDocument.using(title = "Notice of court date 3", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_4: ALDocument.using(title = "Notice of court date 4", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_5: ALDocument.using(title = "Notice of court date 5", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_6: ALDocument.using(title = "Notice of court date 6", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_7: ALDocument.using(title = "Notice of court date 7", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_8: ALDocument.using(title = "Notice of court date 8", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_9: ALDocument.using(title = "Notice of court date 9", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_10: ALDocument.using(title = "Notice of court date 10", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_11: ALDocument.using(title = "Notice of court date 11", filename="notice_of_court_date.pdf", has_addendum=False)
+  - notice_of_court_date_12: ALDocument.using(title = "Notice of court date 12", filename="notice_of_court_date.pdf", has_addendum=False)
   - motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 objects:
@@ -1197,7 +1215,7 @@ objects:
   - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information_bundle, all_parents_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
   #- order_bundle: ALDocumentBundle.using(elements=[order, order_to_waive_notice], filename="name_change_order_bundle.pdf", title="Order", enabled=True)
   #See the comments in the code block creating the parent_list_generator list to see why this bundle does not use list comprehension.
-  - notice_bundle: ALDocumentBundle.using(elements=[notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="notice_of_court_date_bundle.pdf", title="Notice of court date for request for name change")
+  - notice_bundle: ALDocumentBundle.using(elements=[notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="notice_of_court_date_bundle.pdf", title="Notice of court date")
   #- notice_bundle: ALDocumentBundle.using(elements=[notices], filename="notice_of_court_date_bundle.pdf", title= "Notices")
 ---
 #The notice bundle was behaving oddly. It was making duplicates of its first entry rather than including all entries. My makeshift solution is to list the documents individually in these bundles.
@@ -2778,7 +2796,7 @@ review:
       % elif x.receive_method == "newspaper":
       I will publish notice of this Request in a local newspaper.
       % endif
-    show if: x.agree != True and x.risk_check == False and x.address_known == False
+    show if: x.agree != True and x.risk_check == False
 ---
 section: Your information
 id: user review screen
