@@ -52,14 +52,15 @@ code: |
   how_to_use
   accept_terms
   
-  if user_is_adult == False:
-    not_an_adult_kickout
-  if six_months_in_illinois == False:
-    not_enough_illinois_kickout
+  
   
     
     
   nav.set_section('section_user')
+  if user_is_adult == False:
+    not_an_adult_kickout
+  if six_months_in_illinois == False:
+    not_enough_illinois_kickout
   if time_in_illinois.years < 0.5:
     not_enough_illinois_kickout
   set_progress(20)
@@ -74,21 +75,24 @@ code: |
   children.gather()
   waiver_reason_logic
   set_progress(60)
-  if any_risk == True:
+
+  #If any parent who needs to be notified poses a risk or if notice by publication would be required but could cause the child a hardship, the questions around motion to waive notice/publication should be asked.
+  if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
     if waiver_reason['order'] == True:
       if protective_order.any_true():
         order_against_parents
         orders.gather()
     if waiver_reason['hardship'] == True:
       hardship_text
-  elif child_notice_would_be_published == True and any_risk == False:
-    if request_waiver == True:
-      if waiver_reason['order'] == True:
-        if protective_order.any_true():
-          order_against_parents
-          orders.gather()
-      if waiver_reason['hardship'] == True:
-        hardship_text
+  #If no parent poses a risk to the child but a parent would have to be notified by newspaper publication, the user is given an opportunity to say publication could pose an issue for other reasons.
+  #elif child_notice_would_be_published == True and any_risk == False:
+  #  if request_waiver == True:
+  #    if waiver_reason['order'] == True:
+  #      if protective_order.any_true():
+  #        order_against_parents
+  #        orders.gather()
+  #    if waiver_reason['hardship'] == True:
+  #      hardship_text
     
   
   
@@ -104,6 +108,10 @@ code: |
   
   if any_to_notify == True:
     notice_reminder
+    
+  if any_to_notify == True or (child_notice_would_be_published == True and any_risk == False):
+    if any_to_notify == True or request_waiver == False:
+      complete_notice
   set_progress(100)
   nav.set_section('section_download')
   #enabled_enabler
@@ -155,54 +163,6 @@ code: |
       if children[i].any_other_parents == True:
         about_other_parentals
         children[i].parents.gather()
-        #All parentals are listed in the child information sheet--and all but the first get an additional parent sheet--but they appear on different templates depending on whether they agree to the name change, whether the user knows their address, and whether the user thinks the parental would pose a safety risk if they knew of the name change. Additionally, there is a later variable outside this gather loop that asks if published notice would pose a risk to the user's children.
-        #If a parental agrees to the name change, they should only appear on the child information sheet.
-        #If a parental does not agree to the name change, the user knows their address, and the user does not think they would pose a risk, they should appear on a notice of court date form. 
-        #if children[i].parents[0].agree == True: 
-        #  children[i].parents[0].notarized_signature
-        #if children[i].parents[0].address_known == True:
-        #  children[i].parents[0].address.address
-        #if children[i].parents[0].agree != True:
-        #  children[i].parents[0].notice_waiver_info  
-        #  if children[i].parents[0].risk_check == False:
-        #    if children[i].parents[0].address_known == True:
-        #      children[i].parents[0].receive_method 
-        #  if children[i].parents[0].agree != True and children[i].parents[0].address_known == False and children[i].parents[0].risk_check == False:
-        #    children[i].parents[0].published_notice_info 
-        #  elif children[i].parents[0].agree != True and children[i].parents[0].address_known == True and children[i].parents[0].risk_check == False and children[i].parents[0].receive_method == "newspaper":
-        #    children[i].parents[0].published_notice_info 
-        #
-      #if children[i].include_third_parent_guardian == True: 
-        #children[i].parents[1].name.first
-        #if children[i].parents[1].agree == True: 
-        #  children[i].parents[1].notarized_signature
-        #if children[i].parents[1].address_known == True:
-        #  children[i].parents[1].address.address
-        #if children[i].parents[1].agree != True:
-        #  children[i].parents[1].notice_waiver_info  
-        #  if children[i].parents[1].risk_check == False:
-        #    if children[i].parents[1].address_known == True:
-        #      children[i].parents[1].receive_method 
-        #if children[i].parents[1].agree != True and children[i].parents[1].address_known == False and children[i].parents[1].risk_check == False:
-        #  children[i].parents[1].published_notice_info 
-        #elif children[i].parents[1].agree != True and children[i].parents[1].address_known == True and children[i].parents[1].risk_check == False and children[i].parents[1].receive_method == "newspaper":
-        #    children[i].parents[1].published_notice_info 
-   #
-      #if children[i].include_custody_haver == True:
-      #  children[i].parents[2].name.first
-      #  if children[i].parents[2].agree == True: 
-      #    children[i].parents[2].notarized_signature
-      #  if children[i].parents[2].address_known == True:
-      #    children[i].parents[2].address.address
-      #  if children[i].parents[2].agree != True:
-      #    children[i].parents[2].notice_waiver_info  
-      #    if children[i].parents[2].risk_check == False:
-      #      if children[i].parents[2].address_known == True:
-      #        children[i].parents[2].receive_method 
-      #  if children[i].parents[2].agree != True and children[i].parents[2].address_known == False and children[i].parents[2].risk_check == False:
-      #    children[i].parents[2].published_notice_info 
-      #  elif children[i].parents[2].agree != True and children[i].parents[2].address_known == True and children[i].parents[2].risk_check == False and children[i].parents[2].receive_method == "newspaper":
-      #      children[i].parents[2].published_notice_info 
             
    #Between the name change request form and the additional children form, there are space for 12 children. 
   if i == 11:
@@ -346,7 +306,7 @@ fields:
 ---
 id: user address
 question: |
-  % if use_safe_address == False:
+  % if use_safe_address == True:
   What is your mailing address?
   % else:
   What is your home address?
@@ -629,6 +589,10 @@ choices:
 id: other parent agree
 question: |
   Does ${children[i].parents[j].name.full(middle='full')} agree to ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s name change?
+subquestion: |
+  If ${children[i].parents[j].name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
+  
+  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request, you should select **No** here.
 fields:
   - no label: children[i].parents[j].agree
     datatype: yesnomaybe
@@ -676,7 +640,7 @@ subquestion: |
 ---
 id: other parent risk check
 question: |
-  Are you worried that giving notice to ${children[i].parents[j].name.full(middle='full')} of the name change request would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination?
+   Are you worried that giving notice of the name change request to ${children[i].parents[j].name.full(middle='full')} would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination?
 fields:
   - no label: children[i].parents[j].risk_check
     datatype: yesnoradio
@@ -697,12 +661,15 @@ code: |
   #The parent count variable is used with parent list generator. It is used as the index variable and is incremented whenever a parent is added to the list.
   parent_count = 0
   
-  #The following variables are used as flags. They track whether notice would be a hardship, whether at least one parent would pose a risk, whether at least one parental would need to be notified by publication, and whether a parental with a known address would need to be notified.
-  notice_waiver_hardship = False
+  #The following variables are used as flags. 
+  #child_notice_would_be_published should be set to True if two conditions are met. 1. A parent does not agree to the name change (or their agrement is unknown) 2. The user does not know their address.
+  #any_risk tracks should be True if there is at least one parent who does not agree to the name change and may pose a risk to the child.
+  # any_to_notify should be True if there is at least one parent who does not agree to the name change and does not pose a risk to the child.
   child_notice_would_be_published = False
   any_risk = False
   any_to_notify = False
  
+  #In addition to setting the above flags to True if necessary, this for loop also generates the parent_list_generator object.
   for child in children:
     if child.any_other_parents == True:
       if child.parents.number_gathered() > 0:
@@ -712,63 +679,10 @@ code: |
               child_notice_would_be_published = True
             if parent.risk_check == True:
               any_risk = True
-              notice_waiver_hardship = True
             else:
               if parent.address_known == True:
                 any_to_notify = True
-                #parent_list_generator[parent_count] = child.parents[1]
-                #parent_count += 1
-    
-                #parent_storage = child.parents[1]
                 parent_list_generator.append(parent)
-    
-    #if child.include_other_parent == True:
-    #  if child.parents[0].agree != True:
-    #    if child.parents[0].address_known == False:
-    #      child_notice_would_be_published = True
-    #    if child.parents[0].risk_check == True:
-    #      any_risk = True
-    #      notice_waiver_hardship = True
-    #    else:
-    #      if child.parents[0].address_known == True:
-    #        any_to_notify = True
-    #        #parent_list_generator[parent_count] = child.parents[0]
-    #        #parent_count += 1
-
-    #      #parent_storage = child.parents[0]
-    #      
-    #      #Creating the parent list generator ran into an issue: I tried to use a list comprehension in an ALDocumentBundle so I would only need one attachment block for the notice of court date pdf, but unfortunately parent_list_generator[i] seems to just point to the corresponding children[i].parents[j] object, which caused some glitches. I hope to figure out how to solve this issue, but it may become mute if SME feedback leads to the parent list functionality being completely overhauled.
-    #      parent_list_generator.append(child.parents[0])
-    #if child.include_third_parent_guardian == True:      
-    #  if child.parents[1].agree != True:
-    #    if child.parents[1].address_known == False:
-    #      child_notice_would_be_published = True
-    #    if child.parents[1].risk_check == True:
-    #      any_risk = True
-    #      notice_waiver_hardship = True
-    #    else:
-    #      if child.parents[1].address_known == True:
-    #        any_to_notify = True
-    #        #parent_list_generator[parent_count] = child.parents[1]
-    #         #parent_count += 1
-
-    #        #parent_storage = child.parents[1]
-    #        parent_list_generator.append(child.parents[1])
-    #if child.include_custody_haver == True:
-    #  if child.parents[2].agree != True:
-    #    if child.parents[2].address_known == False:
-    #      child_notice_would_be_published = True
-    #    if child.parents[2].risk_check == True:
-    #      any_risk = True
-    #      notice_waiver_hardship = True
-    #    else:
-    #      if child.parents[2].address_known == True:
-    #        any_to_notify = True
-    #        #parent_list_generator[parent_count] = child.parents[2]
-    #        #parent_count += 1
-
-    #      #parent_storage = child.parents[2]
-    #      parent_list_generator.append(child.parents[2])  
 
   parent_list_generator.there_is_another = False 
   waiver_reason_logic = True
@@ -1041,12 +955,10 @@ fields:
       This email address will appear on your court forms. Be sure to check 
       this email daily, otherwise you may miss important information about 
       your case.
-    show if: x.has_email_address      
+    show if: users[0].has_email_address      
   - Email address: users[0].email    
     datatype: email
-    show if: 
-      variable: users[0].has_email_address
-      is: True
+    show if: users[0].has_email_address
 validation code: |
   if (not showifdef('users[0].phone_number') and \
       (users[0].has_email_address == False)):
@@ -1081,7 +993,9 @@ depends on:
   - cook_district
 code: |
   if trial_court_index == -1:
-    trial_court = court_list.as_court('trial_court', cook_district)
+    #I commented out the line normally used in this sort of code block and manually put in 15 instead. This sets the trial_court object to the Daley Center for any user filing in Cook County. Why did I do this? Because the courthouse address is not used in this program, this code block is only being used due to our standardization of the county blocks. If you need to reintroduce courthouse addresses in an update, reimplement the "trial_court = court_list.as_court('trial_court', cook_district)" line. You'll also want to reactivate the corresponding review screen buttons.
+    #trial_court = court_list.as_court('trial_court', cook_district)
+    trial_court = court_list.as_court('trial_court', 15)
   else:
     trial_court = court_list.as_court('trial_court', trial_court_index)
     
@@ -1130,16 +1044,58 @@ id: notice reminder
 continue button field: notice_reminder
 question: |
   % if parent_list_generator.number_gathered() > 3:
-  About the *Notice of court date* forms
+  About the *Notice of Court Date* forms
   % else:
-  About the *Notice of court date*
+  About the *Notice of Court Date*
   % endif
 subquestion: |  
   % if parent_list_generator.number_gathered() > 3:
-  Each notice form has room for 3 signatures. Be sure to send a copy to **each person** on each notice.
+  Each notice form can include up to 3 people. Be sure to send a copy to **each person** on each notice.
   % else:
-  The notice form has room for 3 signatures. Be sure to send a copy to **each person** on the notice.
+  The notice form can include up to 3 people. Be sure to send a copy to **each person** on the notice.
   % endif
+---
+id: complete publication notice
+continue button field: complete_notice
+question: |
+  % if child_notice_would_be_published == True and any_risk == False and any_to_notify == True:
+  Complete your notices
+  % elif child_notice_would_be_published == True and any_risk == False:
+  Complete your publication notice
+  % else:
+  % if parent_list_generator.number_gathered() > 1:
+  Complete your notices
+  % else:
+  Complete your notice
+  % endif
+  % endif
+subquestion: |
+  When you file the name change request, the clerk should give you details about going to court. 
+  
+  % if child_notice_would_be_published == True and any_risk == False and any_to_notify == True:
+  Add the court hearing date, time, and how to attend court to the *Notice of Court Date* and *Publication Notice of Court Date* forms.
+  
+  **Note:** These sections need to be complete before you send out the notices. 
+  % elif child_notice_would_be_published == True and any_risk == False:
+  Add the court hearing date, time, and how to attend court to the *Publication Notice of Court Date*.
+  
+  **Note:** These sections need to be complete before the newspaper can publish the notice.  
+  % else:
+  % if parent_list_generator.number_gathered() > 1:
+  Add the court hearing date, time, and how to attend court to the *Notice of Court Date* forms.
+  
+  **Note:** These sections need to be complete before you send out the notices. 
+  % else:
+  Add the court hearing date, time, and how to attend court to the *Notice of Court Date*.
+  
+  **Note:** These sections need to be complete before you send out the notice. 
+  % endif
+  % endif
+  
+  [FILE name_change_court_date.png, 100%, Court Date Information section of Publication notice]
+
+  [FILE name_change_hearing_details.png, 100%, How to Attend Hearing section of Publication notice]
+
 ---
 id: download page get docs screen
 event: get_docs_screen
@@ -1211,7 +1167,7 @@ objects:
   - all_parents_bundle: ALDocumentBundle.using(elements=[item.additional_parents_bundle for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
 ---
 objects:
-  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change (minor name change)", has_addendum=False, enabled=True)
+  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change", has_addendum=False, enabled=True)
 ---
 #on change:
 #  children[i].name.first: |
@@ -1434,7 +1390,7 @@ attachment:
   editable: False
   pdf template file: Request_for_Name_Change_Minor.pdf
   fields:
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "one_child_old_first": ${children[0].name.first}
@@ -1535,7 +1491,7 @@ attachment:
   editable: False
   pdf template file: order_to_waive_notice.pdf
   fields:
-    - "trial_court_county": ${end_in_county(filing_county)}
+    - "trial_court_county": ${filing_county}
     - "user": ${ users[0].name.full(middle="full") }
 ---    
 attachment:
@@ -1587,7 +1543,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "court_date": ${""}
@@ -1632,7 +1588,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "other_parent_name": ${parent_list_generator[3].name.full(middle='full')}
     - "other_parent_address": ${parent_list_generator[3].address.on_one_line(bare=True) if parent_list_generator[3].address_known == True else ""}
@@ -1663,7 +1619,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "other_parent_name": ${parent_list_generator[6].name.full(middle='full')}
     - "other_parent_address": ${parent_list_generator[6].address.on_one_line(bare=True) if parent_list_generator[6].address_known == True else ""}
@@ -1694,7 +1650,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "court_date": ${""}
@@ -1739,7 +1695,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "court_date": ${""}
@@ -1784,7 +1740,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "court_date": ${""}
@@ -1829,7 +1785,7 @@ attachment:
   editable: False
   pdf template file: Order_for_Name_Change_Minor.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
 ---
@@ -1841,7 +1797,7 @@ attachment:
   editable: False
   pdf template file: Publication_Notice_Minor2.pdf
   fields: 
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "child_old_name_1": ${children[0].name.full(middle='full')}
@@ -1885,7 +1841,7 @@ attachment:
   editable: False
   pdf template file: Request_for_Name_Change_Child_Information.pdf
   fields: 
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "child_old_first": ${children[i].name.first}
@@ -1977,7 +1933,7 @@ attachment:
   editable: False
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${end_in_county(filing_county)}
+    - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "court_date": ${""}
