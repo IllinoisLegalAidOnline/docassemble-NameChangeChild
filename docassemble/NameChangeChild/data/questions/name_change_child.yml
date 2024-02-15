@@ -51,11 +51,7 @@ code: |
   set_progress(5)
   how_to_use
   accept_terms
-  
-  
-  
-    
-    
+   
   nav.set_section('section_user')
   if user_is_adult == False:
     not_an_adult_kickout
@@ -503,6 +499,10 @@ fields:
 id: child address
 question: |
   What is ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s address?
+subquestion: |
+  **This address will appear on your court forms.**
+  
+  You need to put an address on the court forms where you can receive information about the case. It does not have to be the address where the child lives.
 fields:
   - Street address: children[i].address.address
     address autocomplete: True
@@ -948,7 +948,7 @@ id: child safety address
 question: |
   Do you want to use the safe mailing address for ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
 subquestion: |
-  You need to put an address for your child on the court forms, but it does not have to be the address where they live.
+  You need to put an address on the court forms where you can receive information about the case. It does not have to be the address where the child lives.
   
   The safe mailing address you entered is:
   
@@ -1812,7 +1812,7 @@ attachment:
   name: publication_notice
   filename: publication_notice
   skip undefined: True
-  editable: False
+  editable: True
   pdf template file: Publication_Notice_Minor2.pdf
   fields: 
     - "filing_county": ${filing_county}
@@ -1937,7 +1937,7 @@ attachment:
     - "parental_last": ${children[i].parents[j].name.last if children[i].parents[j].name.suffix == "" else (children[i].parents[j].name.last + " " + children[i].parents[j].name.suffix)}
     - "parental_address": ${children[i].parents[j].address.on_one_line(bare=True) if children[i].parents[j].address_known else "Unknown"}
     - "certified_or_sheriff": ${True if children[i].parents[j].address_known == True and children[i].parents[j].agree != True else False}
-    - "publication_notice": ${True if children[i].parents[1].address_known == False and children[i].parents[j].agree != True and any_risk == False else False}
+    - "publication_notice": ${True if children[i].parents[j].address_known == False and children[i].parents[j].agree != True and any_risk == False else False}
     - "rights_terminated": ${False}
     - "disagrees": ${ True if children[i].parents[j].agree == False else False}
     - "dont_know": ${True if children[i].parents[j].agree is None else False}
@@ -2276,7 +2276,7 @@ fields:
       % if interview_type == 'adult':
       ${today().minus(years=110)}
       % else:
-      ${x[i].birth_date}
+      ${x[i].birthdate}
       % endif
   - Sentence received: x[i].convictions[j].sentence
     maxlength: 30
@@ -2287,7 +2287,7 @@ fields:
       % if interview_type == 'adult':
       ${today().minus(years=110)}
       % else:
-      ${x[i].birth_date}
+      ${x[i].birthdate}
       % endif
   - Pardoned?: x[i].convictions[j].pardoned
     datatype: yesnoradio
