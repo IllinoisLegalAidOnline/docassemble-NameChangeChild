@@ -1185,6 +1185,9 @@ objects:
   - all_parents_bundle: ALDocumentBundle.using(elements=[item.additional_parents_bundle for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
 ---
 objects:
+  - all_criminal_addendums: ALDocumentBundle.using(elements=[item.additional_criminal_history for item in children], filename="additional_criminal_history.pdf", title = "Additional criminal history", enabled = True)
+---
+objects:
   - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change", has_addendum=False, enabled=True)
 ---
 #on change:
@@ -1212,7 +1215,7 @@ objects:
   #- notices: ALDocumentBundle.using(elements=[item.one_notice_set for item in children], filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
 objects:
-  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information_bundle, all_parents_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
+  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information_bundle, all_criminal_addendums, all_parents_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
   #- order_bundle: ALDocumentBundle.using(elements=[order, order_to_waive_notice], filename="name_change_order_bundle.pdf", title="Order", enabled=True)
   #See the comments in the code block creating the parent_list_generator list to see why this bundle does not use list comprehension.
   - notice_bundle: ALDocumentBundle.using(elements=[notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="notice_of_court_date_bundle.pdf", title="Notice of court date")
@@ -1245,6 +1248,11 @@ code: |
     child.has_guardian = False
     child.child_information.enabled = True
     child.additional_parents_bundle.enabled = False
+    child.additional_criminal_history.enabled = False
+    
+    if child.felonies or child.registry or child.id_theft:
+      if child.convictions.number() > 3:
+        child.additional_criminal_history.enabled = True
 
     # new logic test
     if child.any_other_parents == True:
@@ -1850,6 +1858,7 @@ objects:
   - children[i].child_information: ALDocument.using(title="Child information", filename="child_information.pdf", has_addendum=False)
   - children[i].parents[j].parent_info_sheet: ALDocument.using(title="Parent information", filename="additional_parent.pdf", has_addendum=False)
   - parent_list_generator[i].notice_of_court_date: ALDocument.using(title="Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False)
+  - children[i].additional_criminal_history: ALDocument.using(title="Additional Criminal History", filename="child_name_change_additional_criminal_history.pdf", has_addendum=False)  
 ---
 attachment:
   variable name: children[i].child_information[j]
@@ -1920,6 +1929,188 @@ attachment:
     - "third_parent_true": ${children[i].has_guardian}
     - "custodian_true": ${children[i].has_custodian}
     - "custodian_false": ${ True if children[i].has_custodian == False else False}
+---
+#The fields in this pdf template refer to "user" because it is pulled from the adult name change program. In this program, the form represents the child's additional criminal history, not the user's.
+attachment:
+  variable name: children[i].additional_criminal_history[j]
+  name: addendum
+  filename: addendum
+  skip undefined: True
+  editable: False
+  pdf template file: name_change_additional_criminal_history.pdf
+  fields:
+    - "trial_court_county": ${ filing_county }
+    - "user__1": ${ children[i].name.full(middle='full') }
+    - "user_offense_name_4": ${ children[i].convictions[3].name.text }
+    - "user_conviction_date_4": ${ format_date(children[i].convictions[3].date, format='MM/dd/yyyy') }
+    - "user_sentence_4": ${ children[i].convictions[3].sentence }
+    - "user_sentence_completed_date_4": ${ format_date(children[i].convictions[3].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_4": |
+        % if children[i].convictions[3].name.text != "":
+        % if children[i].convictions[3].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_5": ${ children[i].convictions[4].name.text }
+    - "user_conviction_date_5": ${ format_date(children[i].convictions[4].date, format='MM/dd/yyyy') }
+    - "user_sentence_5": ${ children[i].convictions[4].sentence }
+    - "user_sentence_completed_date_5": ${ format_date(children[i].convictions[4].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_5": |
+        % if children[i].convictions[4].name.text != "":
+        % if children[i].convictions[4].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_6": ${ children[i].convictions[5].name.text }
+    - "user_conviction_date_6": ${ format_date(children[i].convictions[5].date, format='MM/dd/yyyy') }
+    - "user_sentence_6": ${ children[i].convictions[5].sentence }
+    - "user_sentence_completed_date_6": ${ format_date(children[i].convictions[5].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_6": |
+        % if children[i].convictions[5].name.text != "":
+        % if children[i].convictions[5].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_7": ${ children[i].convictions[6].name.text }
+    - "user_conviction_date_7": ${ format_date(children[i].convictions[6].date, format='MM/dd/yyyy') }
+    - "user_sentence_7": ${ children[i].convictions[6].sentence }
+    - "user_sentence_completed_date_7": ${ format_date(children[i].convictions[6].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_7": |
+        % if children[i].convictions[6].name.text != "":
+        % if children[i].convictions[6].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_8": ${ children[i].convictions[7].name.text }
+    - "user_conviction_date_8": ${ format_date(children[i].convictions[7].date, format='MM/dd/yyyy') }
+    - "user_sentence_8": ${ children[i].convictions[7].sentence }
+    - "user_sentence_completed_date_8": ${ format_date(children[i].convictions[7].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_8": |
+        % if children[i].convictions[7].name.text != "":
+        % if children[i].convictions[7].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_9": ${ children[i].convictions[8].name.text }
+    - "user_conviction_date_9": ${ format_date(children[i].convictions[8].date, format='MM/dd/yyyy') }
+    - "user_sentence_9": ${ children[i].convictions[8].sentence }
+    - "user_sentence_completed_date_9": ${ format_date(children[i].convictions[8].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_9": |
+        % if children[i].convictions[8].name.text != "":
+        % if children[i].convictions[8].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_10": ${ children[i].convictions[9].name.text }
+    - "user_conviction_date_10": ${ format_date(children[i].convictions[9].date, format='MM/dd/yyyy') }
+    - "user_sentence_10": ${ children[i].convictions[9].sentence }
+    - "user_sentence_completed_date_10": ${ format_date(children[i].convictions[9].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_10": |
+        % if children[i].convictions[9].name.text != "":
+        % if children[i].convictions[9].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_11": ${ children[i].convictions[10].name.text }
+    - "user_conviction_date_11": ${ format_date(children[i].convictions[10].date, format='MM/dd/yyyy') }
+    - "user_sentence_11": ${ children[i].convictions[10].sentence }
+    - "user_sentence_completed_date_11": ${ format_date(children[i].convictions[10].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_11": |
+        % if children[i].convictions[10].name.text != "":
+        % if children[i].convictions[10].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_12": ${ children[i].convictions[11].name.text }
+    - "user_conviction_date_12": ${ format_date(children[i].convictions[11].date, format='MM/dd/yyyy') }
+    - "user_sentence_12": ${ children[i].convictions[11].sentence }
+    - "user_sentence_completed_date_12": ${ format_date(children[i].convictions[11].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_12": |
+        % if children[i].convictions[11].name.text != "":
+        % if children[i].convictions[11].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_13": ${ children[i].convictions[12].name.text }
+    - "user_conviction_date_13": ${ format_date(children[i].convictions[12].date, format='MM/dd/yyyy') }
+    - "user_sentence_13": ${ children[i].convictions[12].sentence }
+    - "user_sentence_completed_date_13": ${ format_date(children[i].convictions[12].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_13": |
+        % if children[i].convictions[12].name.text != "":
+        % if children[i].convictions[12].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_14": ${ children[i].convictions[13].name.text }
+    - "user_conviction_date_14": ${ format_date(children[i].convictions[13].date, format='MM/dd/yyyy') }
+    - "user_sentence_14": ${ children[i].convictions[13].sentence }
+    - "user_sentence_completed_date_14": ${ format_date(children[i].convictions[13].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_14": |
+        % if children[i].convictions[13].name.text != "":
+        % if children[i].convictions[13].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_15": ${ children[i].convictions[14].name.text }
+    - "user_conviction_date_15": ${ format_date(children[i].convictions[14].date, format='MM/dd/yyyy') }
+    - "user_sentence_15": ${ children[i].convictions[14].sentence }
+    - "user_sentence_completed_date_15": ${ format_date(children[i].convictions[14].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_15": |
+        % if children[i].convictions[14].name.text != "":
+        % if children[i].convictions[14].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_16": ${ children[i].convictions[15].name.text }
+    - "user_conviction_date_16": ${ format_date(children[i].convictions[15].date, format='MM/dd/yyyy') }
+    - "user_sentence_16": ${ children[i].convictions[15].sentence }
+    - "user_sentence_completed_date_16": ${ format_date(children[i].convictions[15].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_16": |
+        % if children[i].convictions[15].name.text != "":
+        % if children[i].convictions[15].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+    - "user_offense_name_17": ${ children[i].convictions[16].name.text }
+    - "user_conviction_date_17": ${ format_date(children[i].convictions[16].date, format='MM/dd/yyyy') }
+    - "user_sentence_17": ${ children[i].convictions[16].sentence }
+    - "user_sentence_completed_date_17": ${ format_date(children[i].convictions[16].completed_date, format='MM/dd/yyyy') }
+    - "user_pardoned_17": |
+        % if children[i].convictions[16].name.text != "":
+        % if children[i].convictions[16].pardoned == True:
+        Yes
+        % else:
+        No
+        % endif
+        % endif
+
+
 ---
 attachment:
   variable name: children[i].parents[j].parent_info_sheet[k]
