@@ -32,7 +32,8 @@ sections:
   - section_intro: Start
   - section_user: Your information
   - section_children: Children and parents
-  - section_filing: Filing information
+  - section_notice: Notice
+  - section_filing: Filing
   - section_download: Download
 ---
 code: |
@@ -48,8 +49,9 @@ code: |
   interview_type = "child"
   nav.set_section('section_intro')
   sees_nav_bar
-  set_progress(5)
   how_to_use
+  set_progress(5)
+  whats_next
   accept_terms
    
   nav.set_section('section_user')
@@ -69,6 +71,22 @@ code: |
   nav.set_section('section_children')
   set_progress(40)
   children.gather()
+  nav.set_section('section_notice')
+  for child in children:
+    if child.any_other_parents == True:
+      interview_parent_index = 0
+      while interview_parent_index < child.parents.number_gathered():
+        if child.parents[interview_parent_index].agree == True:
+          notarized_signature
+        else:
+          notice_waiver_info
+          child.parents[interview_parent_index].risk_check
+          if child.parents[interview_parent_index].risk_check == False:
+            if child.parents[interview_parent_index].address_known == True:
+              child.parents[interview_parent_index].receive_method
+            else:
+              published_notice_info
+        interview_parent_index += 1
   waiver_reason_logic
   set_progress(60)
 
@@ -171,17 +189,17 @@ code: |
   if children[i].any_other_parents == True:
     children[i].parents[j].name.first
     children[i].parents[j].parent_type
-    if children[i].parents[j].agree == True: 
-      children[i].parents[j].notarized_signature
+    #if children[i].parents[j].agree == True: 
+      #children[i].parents[j].notarized_signature
     if children[i].parents[j].address_known == True:
       children[i].parents[j].address.address
-    if children[i].parents[j].agree != True:
-      children[i].parents[j].notice_waiver_info  
-      if children[i].parents[j].risk_check == False:
-        if children[i].parents[j].address_known == True:
-          children[i].parents[j].receive_method 
-      if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
-        children[i].parents[j].published_notice_info 
+    #if children[i].parents[j].agree != True:
+      #children[i].parents[j].notice_waiver_info  
+      #if children[i].parents[j].risk_check == False:
+        #if children[i].parents[j].address_known == True:
+          #children[i].parents[j].receive_method 
+      #if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
+        #children[i].parents[j].published_notice_info 
       #elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
         #children[i].parents[j].published_notice_info 
   else:
@@ -210,9 +228,16 @@ continue button field: how_to_use
 question: |
   Instructions
 subquestion: |
-  Set aside 20 to 30 minutes to finish this program. You can log in and save your work to return to later. 
+  To change a child's name in Illinois: 
 
-  After you download your forms, you will need to sign it and send it to the court.
+  * Your child must be under 18 years old, and 
+  * You must have lived in Illinois for at least 6 months.
+  
+  You will also need details about your child's criminal history.
+
+  If your child is 18 years old or older, you cannot file a name change on their behalf. They can use ILAO's [**Name change for an adult**](https://www.illinoislegalaid.org/legal-information/name-change-adult) Easy Form.
+  
+  Set aside 20 to 30 minutes to finish this program. You can log in and save your work to return to later. 
   
   ${ collapse_template(help_example) }  
 
@@ -228,6 +253,17 @@ content: |
 
   This is an example of help. Click again to hide.
 ---
+id: whats next
+continue button field: whats_next
+question: |
+  After you finish this program
+subquestion: |
+  After you download your forms, you must file them with the court in the county where you live. This program **does not** file your forms for you.
+  
+  When you file your forms, the court clerk will give you a court date. Usually, you have to notify any of the child's other parents, guardians, or custodians who didn't sign on to the name change. However, if giving them notice would be a hardship for you or your child, including risking health or safety, you can ask the judge to skip that step by filing a motion to waive notice. This program will help you make the forms you need either way.
+  
+  To learn more, read the "How to Change a Name for Minor Children" instructions you can download at the end of this program. 
+--- 
 template: get_legal_help
 subject: |
   **What if I need legal advice?**
@@ -599,11 +635,11 @@ fields:
     datatype: yesnomaybe
 ---
 id: other parent notarized signature
-continue button field: children[i].parents[j].notarized_signature
+continue button field: notarized_signature
 question: |
-  About ${children[i].parents[j].name.full(middle='full')}'s signature
+  About parents' signatures
 subquestion: |
-  ${children[i].parents[j].name.full(middle='full')} will need to sign the *Request for Name Change – Child Information* form in front of a Notary Public.
+  Any parents, guardians, or custodians who agree to the name change will need to sign the *Request for Name Change – Child Information* form in front of a Notary Public.
   
   You can find a Notary Public at a bank or currency exchange, and in some libraries.
 
@@ -631,13 +667,13 @@ fields:
   - ZIP code: children[i].parents[j].address.zip
 ---
 id: notice waiver info
-continue button field:  children[i].parents[j].notice_waiver_info  
+continue button field:  notice_waiver_info  
 question: |
   About notice and waiver
 subquestion: |
   When you change a child's name, you are usually required to notify any other parent, guardian, or custodian. You provide "notice" by giving them a copy of the name change request forms. If you do not know where they live, you can publish "notice" of the name change request in a newspaper.
 
-  You can ask the court to waive (skip) this notice if you believe that notice or publication would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination.
+  You can ask the court to waive (skip) this notice if you believe that notice or publication would put your child at risk of physical harm or discrimination.
 ---
 id: other parent risk check
 question: |
@@ -659,6 +695,7 @@ depends on:
 code: |
   #Parent list generator is used to gather the information of parents who the user must notify. This list is generated because just iterating through all known parents would include empty objects and parents who do not need to be notified.
   parent_list_generator.clear()
+
   #The parent count variable is used with parent list generator. It is used as the index variable and is incremented whenever a parent is added to the list.
   parent_count = 0
   
@@ -680,7 +717,7 @@ code: |
             parent.address.address
           if parent.agree != True:
             #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
-            parent.notice_waiver_info  
+            notice_waiver_info  
             if parent.address_known == False:
               child_notice_would_be_published = True
             #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
@@ -691,9 +728,16 @@ code: |
             else:
               if parent.address_known == True:
                 any_to_notify = True
-                parent_list_generator.append(parent)
-          else:
-             parent.notarized_signature
+                already_included = False
+                if parent_list_generator.number_gathered() > 0:                  
+                  for item in parent_list_generator:
+                    if parent.name.full(middle='full') == item.name.full(middle='full'):
+                      if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                          already_included = True                      
+                if already_included == False:
+                  parent_list_generator.append(parent)
+          else:  
+             notarized_signature
   parent_list_generator.there_is_another = False 
   waiver_reason_logic = True
 ---
@@ -934,11 +978,11 @@ choices:
   - I will give notice of this Request and the scheduled court date by service of process by sheriff.: sheriff
 ---
 id: published notice info
-continue button field: children[i].parents[j].published_notice_info 
+continue button field: published_notice_info 
 question: |
   About published notice
 subquestion: |
-  If ${children[i].parents[j].name.full(middle='full')} cannot be found, you must ask a local newspaper to publish notice of the name change request once a week for three weeks in a row.
+  If any of your children's parents, guardians, or custodians cannot be found, you must ask a local newspaper to publish notice of the name change request once a week for three weeks in a row.
 
   This program will make a *Publication Notice of Court Date for Request for Name Change.* You must file it with the Circuit Clerk before you publish the notice in a newspaper.
 
@@ -1181,11 +1225,17 @@ objects:
   - children[i].additional_parents_bundle: ALDocumentBundle.using(elements=[item.parent_info_sheet for item in children[i].parents], filename="additional_parent.pdf", title = "Additional parents", enabled=True)
   #- children[i].one_notice_set: ALDocumentBundle.using(elements=[item.notice_of_court_date for item in children[i].parents, filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
-objects:
-  - all_parents_bundle: ALDocumentBundle.using(elements=[item.additional_parents_bundle for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
+#objects:
+#  - all_parents_bundle: ALDocumentBundle.using(elements=[item.additional_parents_bundle for item in children], filename="additional_parents.pdf", title = "Additional parents", enabled=True)
 ---
 objects:
-  - all_criminal_addendums: ALDocumentBundle.using(elements=[item.additional_criminal_history for item in children], filename="additional_criminal_history.pdf", title = "Additional criminal history", enabled = True)
+  - children[i].single_child_bundle: ALDocumentBundle.using(elements=[children[i].child_information, children[i].additional_criminal_history, children[i].additional_parents_bundle], filename="single_child_information.pdf", title = "Child information", enabled=True)
+---
+objects:
+  - organized_children_bundle: ALDocumentBundle.using(elements=[item.single_child_bundle for item in children], filename="children_information.pdf", title = "Children information", enabled=True)
+---
+#objects:
+#  - all_criminal_addendums: ALDocumentBundle.using(elements=[item.additional_criminal_history for item in children], filename="additional_criminal_history.pdf", title = "Additional criminal history", enabled = True)
 ---
 objects:
   - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change", has_addendum=False, enabled=True)
@@ -1209,13 +1259,13 @@ objects:
 #  empty_the_bundles = True
 ---
 #I don't think that the list comprehension bundles have to be listed separately from the other AlDocument and ALDocumentBundle blocks, but I made them separate nonetheless.
-objects:
-  - children_information_bundle: ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
+#objects:
+#  - children_information_bundle: ALDocumentBundle.using(elements=[item.child_information for item in children], filename="child_information.pdf", title = "Child information", enabled=True)
   #- notices: ALDocumentBundle.using(elements=[item.notice_of_court_date for item in parent_list_generator], filename="notice_of_court_date.pdf", title = "Notice of court date")
   #- notices: ALDocumentBundle.using(elements=[item.one_notice_set for item in children], filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
 objects:
-  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, children_information_bundle, all_criminal_addendums, all_parents_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
+  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
   #- order_bundle: ALDocumentBundle.using(elements=[order, order_to_waive_notice], filename="name_change_order_bundle.pdf", title="Order", enabled=True)
   #See the comments in the code block creating the parent_list_generator list to see why this bundle does not use list comprehension.
   - notice_bundle: ALDocumentBundle.using(elements=[notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="notice_of_court_date_bundle.pdf", title="Notice of court date")
@@ -1239,7 +1289,8 @@ code: |
 
   #notices.enabled = False
   
- 
+  #For some reason the program doesn't always behave unless I set this enabled value to True outside of the for loop. 
+  children[0].child_information.enabled = True 
   #child_loop_index = 0 
   #while child_loop_index < children.number_gathered():
   for child in children:  
@@ -2690,11 +2741,11 @@ review:
       **Do you want to add your e-signature to your forms?**
       ${word(yesno(e_signature))}
 ---
-section: Children and parents
-id: children review screen
-event: section_children
+section: Notice
+id: notice review screen
+event: section_notice
 question: |
-  Children and parents
+  Notice
 subquestion: |
   Edit your answers below.
 review:
@@ -2758,6 +2809,18 @@ review:
       **Notice and publication would be a hardship because:**
       ${hardship_text}
     show if: waiver_reason['hardship'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
+---
+section: Children and parents
+id: children review screen
+event: section_children
+question: |
+  Children and parents
+subquestion: |
+  Edit your answers below.
+
+  If you have reached the end of the interview and need to add or delete a child, you will need to restart this program.
+
+  ${ children.table } 
 ---
 #add action is removed from subquestion due to issues with list comprehension in ALDocumentBundles. For posterity, here is the line:
 #${ children.add_action() }
@@ -3030,7 +3093,7 @@ review:
       ${users[0].email}
       % endif
 ---
-section: Filing information
+section: Filing
 id: filing review screen
 event: section_filing
 question: |
