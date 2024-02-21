@@ -98,18 +98,7 @@ code: |
         orders.gather()
     if waiver_reason['hardship'] == True:
       hardship_text
-  #If no parent poses a risk to the child but a parent would have to be notified by newspaper publication, the user is given an opportunity to say publication could pose an issue for other reasons.
-  #elif child_notice_would_be_published == True and any_risk == False:
-  #  if request_waiver == True:
-  #    if waiver_reason['order'] == True:
-  #      if protective_order.any_true():
-  #        order_against_parents
-  #        orders.gather()
-  #    if waiver_reason['hardship'] == True:
-  #      hardship_text
     
-  
-  
   nav.set_section('section_filing')
   set_progress(80)
   filing_county
@@ -637,9 +626,9 @@ fields:
 id: other parent notarized signature
 continue button field: notarized_signature
 question: |
-  About parents' signatures
+  About other signatures
 subquestion: |
-  Any parents, guardians, or custodians who agree to the name change will need to sign the *Request for Name Change – Child Information* form in front of a Notary Public.
+  Any other parents, guardians, or custodians who agree to the name change will need to sign the *Request for Name Change – Child Information* form in front of a Notary Public.
   
   You can find a Notary Public at a bank or currency exchange, and in some libraries.
 
@@ -678,9 +667,21 @@ subquestion: |
 id: other parent risk check
 question: |
    Are you worried that giving notice of the name change request to ${children[i].parents[j].name.full(middle='full')} would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination?
+subquestion: |
+  ${collapse_template(notice_explainer)}
 fields:
   - no label: children[i].parents[j].risk_check
     datatype: yesnoradio
+---
+template: notice_explainer
+subject: |
+  **What is "giving notice?"**
+content: |
+  Notice is the way you tell other parents and guardians about the name change and court dates.
+  
+  This program can make *Notice of court date* forms. You can give this form to other parents and guardians by certified mail or by asking the sheriff to deliver a copy. 
+  
+  If you do not know a parent or guardian's address, you can notify them by newspaper. This program can make a *Publication notice of court date* form.
 ---
 #This code block handles logic for generating the text of the waiver reason question
 depends on:
@@ -969,8 +970,6 @@ id: other parent notice method
 question: |
   How will you give ${children[i].parents[j].name.full(middle='full')} notice of this name change request?
 subquestion: |
-  Notice is the way you tell other parents and guardians about the name change and court dates.
-
   You can give notice by certified mail or by asking the sheriff to deliver a copy of the forms to the other parents or custodian. You can only notify them by newspaper if you do not know their address.
 field: children[i].parents[j].receive_method 
 choices:
@@ -982,9 +981,11 @@ continue button field: published_notice_info
 question: |
   About published notice
 subquestion: |
+  You said you don't know ${child.parents[interview_parent_index].name.full(middle='full')}'s address.
+  
   If any of your children's parents, guardians, or custodians cannot be found, you must ask a local newspaper to publish notice of the name change request once a week for three weeks in a row.
 
-  This program will make a *Publication Notice of Court Date for Request for Name Change.* You must file it with the Circuit Clerk before you publish the notice in a newspaper.
+  This program will make a *Publication Notice of Court Date.* You must file it with the Circuit Clerk before you publish the notice in a newspaper.
 
   Ask the Circuit Clerk for a court date at least 8 weeks from when you file the Publication Notice.
 ---
@@ -2819,8 +2820,14 @@ subquestion: |
   Edit your answers below.
 
   If you have reached the end of the interview and need to add or delete a child, you will need to restart this program.
+review:
+  - Edit: children.revisit
+    button: |
+      **Children: (Edit to change names, addresses, and other guardians)**
 
-  ${ children.table } 
+      % for my_var in children:
+        * ${ my_var.new.name.full(middle="full")} (AKA ${my_var.name.full(middle='full')})
+      % endfor
 ---
 #add action is removed from subquestion due to issues with list comprehension in ALDocumentBundles. For posterity, here is the line:
 #${ children.add_action() }
