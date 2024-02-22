@@ -96,7 +96,7 @@ code: |
       if protective_order.any_true():
         order_against_parents
         orders.gather()
-    if waiver_reason['hardship'] == True:
+    #Following if statement is commented out as the hardship field on the form is available to anyone requesting a waiver.
       hardship_text
     
   nav.set_section('section_filing')
@@ -107,18 +107,16 @@ code: |
   #if child_notice_would_be_published == True and any_risk == False and request_waiver == False:
   #  courthouse_info
   e_signature
-  
-  
-  if any_to_notify == True:
-    notice_reminder
     
   if any_to_notify == True or (child_notice_would_be_published == True and any_risk == False):
     if any_to_notify == True or request_waiver == False:
       complete_notice
+  if any_to_notify == True:
+    notice_reminder
   set_progress(100)
   nav.set_section('section_download')
   #enabled_enabler
-  
+  forms_assembling
   get_docs_screen
 ---
 #Gather loop for children list
@@ -375,7 +373,7 @@ fields:
 ---
 id: child birth date
 question: |
-  When was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) born?
+  When was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) born?
 subquestion: |
   This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](www.illinoislegalaid.org/node/36321).
 fields:
@@ -389,19 +387,19 @@ continue button field: children[i].too_old
 question: |
   Sorry
 subquestion: |
-  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](www.illinoislegalaid.org/node/36321).
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](www.illinoislegalaid.org/node/36321).
 
   If you have another child whose name you would like to change, click **Next**.
 ---
 id: child user relationship
 question: |
-  What is your relationship to ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  What is your relationship to ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})?
 field: children[i].user_relationship
 choices:
   - I am their biological parent.: bio
   - I am their adoptive parent.: adopt
   - I am their legal guardian.: custody
-  - ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) has lived in my home for 3 years and is recognized as my adopted child.: years
+  - ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has lived in my home for 3 years and is recognized as my adopted child.: years
   - Other: other
 ---
 id: not parent or guardian kickout
@@ -418,13 +416,13 @@ continue button field: children[i].guardian_docs
 question: |
   Guardianship documentation
 subquestion: |
-  You should make a copy of the court order which gave you legal guardianship of ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}).
+  You should make a copy of the court order which gave you legal guardianship of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}).
 
   Attach a copy of the court order when you file the name change forms with the court.
 ---
 id: child any convictions
 question: |
-  Has ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) been convicted of or placed on probation for any of the following in Illinois or any other state?
+  Has ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) been convicted of or placed on probation for any of the following in Illinois or any other state?
 fields:
   - no label: children[i].any_convictions
     datatype: checkboxes
@@ -432,13 +430,13 @@ fields:
       - A crime which requires them to register as a sex offender: register
       - Identity theft or aggravated identity theft: identity
       - A felony: felony
-  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) pardoned of the crime requiring them to register as a sex offender?: children[i].register_pardon 
+  - Was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) pardoned of the crime requiring them to register as a sex offender?: children[i].register_pardon 
     show if: children[i].any_convictions['register']
-  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) pardoned of the identity theft or aggravated identity theft?: children[i].identity_pardon
+  - Was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) pardoned of the identity theft or aggravated identity theft?: children[i].identity_pardon
     show if: children[i].any_convictions['identity']
-  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) pardoned of the felony 10 or more years ago?: children[i].felony_pardon
+  - Was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) pardoned of the felony 10 or more years ago?: children[i].felony_pardon
     show if: children[i].any_convictions['felony']
-  - Did ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) complete their probation or sentence for their felony 10 or more years ago?: children[i].felony_complete
+  - Did ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) complete their probation or sentence for their felony 10 or more years ago?: children[i].felony_complete
 validation code: |
   children[i].in_need_of_pardon = False
   if children[i].any_convictions['register'] == True:
@@ -457,13 +455,13 @@ question: |
   Sorry
 subquestion: |
   % if children[i].register_pardon == False:
-  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) must have been pardoned for their crime requiring them to register as a sex offender in order to use this program.
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) must have been pardoned for their crime requiring them to register as a sex offender in order to use this program.
   % endif
   % if children[i].identity_pardon == False:
-  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) must have been pardoned for their identity theft crime.
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) must have been pardoned for their identity theft crime.
   % endif
   % if children[i].felony_pardon == False and children[i].felony_complete == False:
-  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) must have been pardoned or completed their probation or sentence over 10 years ago.
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) must have been pardoned or completed their probation or sentence over 10 years ago.
   % endif
   
   If you want to change the name of a different child, click **Next**.
@@ -504,9 +502,9 @@ fields:
 ---
 id: child birth address
 question: |
-  ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s birth place
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s birth place
 fields:
-  - Was ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) born in the United States?: children[i].birth_place.in_america
+  - Was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) born in the United States?: children[i].birth_place.in_america
     datatype: yesnoradio
     default: True
   - City: children[i].birth_place.city
@@ -523,7 +521,7 @@ fields:
 ---
 id: child address
 question: |
-  What is ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s address?
+  What is ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s address?
 subquestion: |
   **This address will appear on your court forms.**
   
@@ -541,9 +539,11 @@ fields:
 ---
 id: any other parents
 question: |
-  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have any parents, guardians, or custodians other than you?
+  Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have any parents, guardians, or custodians other than you?
 subquestion: |
-  Anyone who has custody over ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) is their custodian.
+  Do not include parents whose rights as parents have been terminated by a court order. 
+
+  Anyone who has custody over ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is their custodian.
 fields:
   - no label: children[i].any_other_parents
     datatype: yesnoradio
@@ -559,7 +559,7 @@ subquestion: |
 ---
 id: child other parent
 question: |
-  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have a biological or adoptive parent other than you?
+  Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have a biological or adoptive parent other than you?
 fields:
   - no label: children[i].include_other_parent
     datatype: yesnoradio
@@ -567,9 +567,9 @@ fields:
 id: child third parent guardian
 question: |
   % if children[i].include_other_parent == True:
-  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have a parent or guardian other than you and ${children[i].parents[0].name.full(middle='full')}?
+  Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have a parent or guardian other than you and ${children[i].parents[0].name.full(middle='full')}?
   % else:
-  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have a guardian other than you? 
+  Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have a guardian other than you? 
   % endif
 fields:
   - no label: children[i].include_third_parent_guardian
@@ -578,9 +578,9 @@ fields:
 id: child custody haver
 question: |
   % if children[i].include_other_parent == False and children[i].include_third_parent_guardian == False:
-  Does anyone other than you have physical custody over ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  Does anyone other than you have physical custody over ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})?
   % else:
-  Does anyone else have physical custody over ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  Does anyone else have physical custody over ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})?
   % endif
 fields:
   - no label: children[i].include_custody_haver
@@ -614,11 +614,11 @@ choices:
 ---
 id: other parent agree
 question: |
-  Does ${children[i].parents[j].name.full(middle='full')} agree to ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s name change?
+  Does ${children[i].parents[j].name.full(middle='full')} agree to ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change?
 subquestion: |
   If ${children[i].parents[j].name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
   
-  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request, you should select **No** here.
+  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request before you file the forms, you should select **No** here.
 fields:
   - no label: children[i].parents[j].agree
     datatype: yesnomaybe
@@ -666,7 +666,7 @@ subquestion: |
 ---
 id: other parent risk check
 question: |
-   Are you worried that giving notice of the name change request to ${children[i].parents[j].name.full(middle='full')} would put ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) at risk of physical harm or discrimination?
+   Are you worried that giving notice of the name change request to ${children[i].parents[j].name.full(middle='full')} would put ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) at risk of physical harm or discrimination?
 subquestion: |
   ${collapse_template(notice_explainer)}
 fields:
@@ -679,9 +679,9 @@ subject: |
 content: |
   Notice is the way you tell other parents and guardians about the name change and court dates.
   
-  This program can make *Notice of court date* forms. You can give this form to other parents and guardians by certified mail or by asking the sheriff to deliver a copy. 
+  This program can make *Notice of Court Date* forms. You can give this form to other parents and guardians by certified mail or by asking the sheriff to deliver a copy. 
   
-  If you do not know a parent or guardian's address, you can notify them by newspaper. This program can make a *Publication notice of court date* form.
+  If you do not know a parent or guardian's address, you can notify them by newspaper. This program can make a *Publication Notice of Court Date* form.
 ---
 #This code block handles logic for generating the text of the waiver reason question
 depends on:
@@ -745,7 +745,7 @@ code: |
 id: want to publish check
 question: |
   % if children.number_gathered() == 1:
-  Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk of harm or discrimination?
+  Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')})'s name change would put them at risk of harm or discrimination?
   % else:
   Are you concerned publishing notice of these name changes would put your children at risk of harm or discrimination?
   % endif
@@ -842,9 +842,15 @@ fields:
 id: order against parents
 question: |
   % if children.number_gathered() == 1:
-  Is the protective order against one of the parents, guardians, or custodians of your child?
+  Is the protective order against one of the parents of your child?
   % else:
-  Is the protective order against one of the parents, guardians, or custodians of your children?
+  Is the protective order against one of the parents of your children?
+  % endif
+subquestion: |
+  % if children.number_gathered() == 1:
+  Click **Yes** if the abuser in the protective order is the parent of the child asking for a name change.
+  % else:
+  Click **Yes** if the abuser in the protective order is the parent of any of the children asking for a name change.
   % endif
 fields:
   - no label: order_against_parents
@@ -952,7 +958,7 @@ subject: |
 content: |  
   % if interview_type == "child":
   % if children.number_gathered() == 1:
-  This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
+  This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
   % else:
   This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put your children at risk of physcial harm or discrimination.
   % endif
@@ -973,8 +979,8 @@ subquestion: |
   You can give notice by certified mail or by asking the sheriff to deliver a copy of the forms to the other parents or custodian. You can only notify them by newspaper if you do not know their address.
 field: children[i].parents[j].receive_method 
 choices:
-  - I will give notice of this Request and the scheduled court date by certified mail.: mail
-  - I will give notice of this Request and the scheduled court date by service of process by sheriff.: sheriff
+  - I will give notice of this name change and the scheduled court date by certified mail.: mail
+  - I will give notice of this name change and the scheduled court date by service of process by sheriff.: sheriff
 ---
 id: published notice info
 continue button field: published_notice_info 
@@ -991,7 +997,7 @@ subquestion: |
 ---
 id: child safety address
 question: |
-  Do you want to use the safe mailing address for ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})?
+  Do you want to use the safe mailing address for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})?
 subquestion: |
   You need to put an address on the court forms where you can receive information about the case. It does not have to be the address where the child lives.
   
@@ -1160,6 +1166,17 @@ subquestion: |
   [FILE name_change_hearing_details.png, 100%, How to Attend Hearing section of Publication notice]
 
 ---
+id: forms assembling
+continue button field: forms_assembling
+question: |
+  Almost done
+subquestion: |
+  After you click **Next**, it will take a few moments to finish making your forms.
+  
+  ###### You do not need to refresh your screen. Hang in there!
+  
+  &nbsp;
+---
 id: download page get docs screen
 event: get_docs_screen
 question: |
@@ -1239,7 +1256,7 @@ objects:
 #  - all_criminal_addendums: ALDocumentBundle.using(elements=[item.additional_criminal_history for item in children], filename="additional_criminal_history.pdf", title = "Additional criminal history", enabled = True)
 ---
 objects:
-  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change", has_addendum=False, enabled=True)
+  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change (1 for each child)", has_addendum=False, enabled=True)
 ---
 #on change:
 #  children[i].name.first: |
@@ -1266,7 +1283,7 @@ objects:
   #- notices: ALDocumentBundle.using(elements=[item.one_notice_set for item in children], filename="notice_of_court_date.pdf", title = "Notice of court date")
 ---
 objects:
-  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request", enabled=True) 
+  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
   #- order_bundle: ALDocumentBundle.using(elements=[order, order_to_waive_notice], filename="name_change_order_bundle.pdf", title="Order", enabled=True)
   #See the comments in the code block creating the parent_list_generator list to see why this bundle does not use list comprehension.
   - notice_bundle: ALDocumentBundle.using(elements=[notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12], filename="notice_of_court_date_bundle.pdf", title="Notice of court date")
@@ -1274,7 +1291,7 @@ objects:
 ---
 #The notice bundle was behaving oddly. It was making duplicates of its first entry rather than including all entries. My makeshift solution is to list the documents individually in these bundles.
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12, order_to_waive_notice, change_order_bundle], filename="name_change_child.pdf", title="All forms")
   -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_court_date, notice_of_court_date_2, notice_of_court_date_3, notice_of_court_date_4, notice_of_court_date_5, notice_of_court_date_6, notice_of_court_date_7, notice_of_court_date_8, notice_of_court_date_9, notice_of_court_date_10, notice_of_court_date_11, notice_of_court_date_12, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
@@ -2268,13 +2285,13 @@ question: |
     Does your spouse have any arrests for which charges have not been filed?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any arrests for which charges have not been filed?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any arrests for which charges have not been filed?
   % endif
 subquestion: |
   % if interview_type == 'adult':
   If you were arrested but did not go to court or see a judge, then you were probably not charged with a crime. That means charges are pending.
   % else:
-  If ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) was arrested but did not go to court or see a judge, then they were probably not charged with a crime. That means charges are pending.
+  If ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) was arrested but did not go to court or see a judge, then they were probably not charged with a crime. That means charges are pending.
   % endif
 fields:
   - no label: x[i].pending_arrests
@@ -2290,7 +2307,7 @@ question: |
     Does your spouse have any pending misdemeanor or felony charges?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any pending misdemeanor or felony charges?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any pending misdemeanor or felony charges?
   % endif
 subquestion: |
   % if interview_type == 'adult':
@@ -2300,7 +2317,7 @@ subquestion: |
     In other words, does your spouse have any ongoing criminal cases against them for misdemeanor or felony offenses?
     % endif
   % else:
-    In other words, does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any ongoing criminal cases against them for misdemeanor or felony offenses?
+    In other words, does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any ongoing criminal cases against them for misdemeanor or felony offenses?
   % endif
 fields:
   - no label: x[i].pending_charges
@@ -2316,7 +2333,7 @@ question: |
     Does your spouse have any convictions or were they placed on probation for any misdemeanors?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?
   % endif
 subquestion: |
   These can be misdemeanors in Illinois or any other state.
@@ -2339,7 +2356,7 @@ question: |
     Does your spouse have any convictions or were they placed on probation for any felonies?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?
   % endif
 subquestion: |
   These can be felonies in Illinois or any other state.
@@ -2362,7 +2379,7 @@ question: |
     Does your spouse have any convictions or were they placed on probation for a crime that required them to register?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?
   % endif
 subquestion: |
   These include crimes that require registration under the:
@@ -2434,7 +2451,7 @@ question: |
     Does your spouse have any convictions or were they placed on probation for identity theft?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?
   % endif
 subquestion: |
   This includes **identity theft** or **aggravated identity theft**.
@@ -2448,7 +2465,7 @@ subquestion: |
     Your spouse can still request a name change even if you answer **Yes**.
     % endif
   % else:
-  You can still request a name change for ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) even if you answer **Yes**.
+  You can still request a name change for ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) even if you answer **Yes**.
   % endif
 fields:
   - no label: x[i].id_theft
@@ -2467,7 +2484,7 @@ subquestion: |
     For these convictions or probations, you must enter more information on your spouse's name change request:
     % endif
   % else:
-  For these convictions or probations of ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}), you must enter more information:
+  For these convictions or probations of ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}), you must enter more information:
   % endif
 
   % if x[i].felonies:
@@ -2497,7 +2514,7 @@ subquestion: |
     For any of the following convictions or probations, you must enter more information on your spouse's name change request:
     % endif
   % else:
-  For any of the following convictions or probations of ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}), you must enter more information:
+  For any of the following convictions or probations of ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}), you must enter more information:
   % endif
   
   % if x[i].felonies:
@@ -2551,7 +2568,7 @@ subquestion: |
     For any of the following convictions or probations, you must enter more information on your spouse's name change request:
     % endif
   % else:
-  For these convictions or probations of ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}), you must enter more information on your name change request:
+  For these convictions or probations of ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}), you must enter more information on your name change request:
   % endif
 
   % if x[i].felonies:
@@ -2581,14 +2598,18 @@ id: children there is another
 question: |
   Do you want to change the name of another child?
 subquestion: |
-  So far you have told us about ${comma_and_list(children)}.
+  So far you have told us about: 
+  
+  % for child in children:
+  * ${child.new.name.full(middle='full')} ( ${child.name.full(middle='full')})
+  % endfor
 fields:
   - no label: children.there_is_another
     datatype: yesnoradio
 ---
 id: parents there is another
 question: |
-  Does ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')}) have another parent, guardian, or custodian?
+  Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have another parent, guardian, or custodian?
 subquestion: |
   So far you have told us about ${comma_and_list(children[i].parents)}.
 fields:
@@ -2657,12 +2678,12 @@ review:
       **Children: (Edit to change names, addresses, and other guardians)**
 
       % for my_var in children:
-        * ${ my_var.new.name.full(middle="full")} (AKA ${my_var.name.full(middle='full')})
+        * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
       % endfor
   - Edit: request_waiver
     button: |
       % if children.number_gathered() == 1:
-      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
+      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')})'s name change would put them at risk?**
       % else:
       **Are you concerned publishing notice of these name changes would put your children at risk?**
       % endif
@@ -2711,7 +2732,7 @@ review:
     button: |
       **Notice and publication would be a hardship because:**
       ${hardship_text}
-    show if: waiver_reason['hardship'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
+    show if: (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
   - label: Edit
     fields:
       - trial_court_index
@@ -2755,12 +2776,12 @@ review:
       **Children: (Edit to change names, addresses, and other guardians)**
 
       % for my_var in children:
-        * ${ my_var.new.name.full(middle="full")} (AKA ${my_var.name.full(middle='full')})
+        * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
       % endfor
   - Edit: request_waiver
     button: |
       % if children.number_gathered() == 1:
-      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (AKA ${children[0].name.full(middle='full')})'s name change would put them at risk?**
+      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')})'s name change would put them at risk?**
       % else:
       **Are you concerned publishing notice of these name changes would put your children at risk?**
       % endif
@@ -2809,7 +2830,7 @@ review:
     button: |
       **Notice and publication would be a hardship because:**
       ${hardship_text}
-    show if: waiver_reason['hardship'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
+    show if: (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
 ---
 section: Children and parents
 id: children review screen
@@ -2820,14 +2841,21 @@ subquestion: |
   Edit your answers below.
 
   If you have reached the end of the interview and need to add or delete a child, you will need to restart this program.
+  
+  ${ children.table }
 review:
-  - Edit: children.revisit
+  - Edit: users[0].name.first
     button: |
-      **Children: (Edit to change names, addresses, and other guardians)**
-
-      % for my_var in children:
-        * ${ my_var.new.name.full(middle="full")} (AKA ${my_var.name.full(middle='full')})
-      % endfor
+      **Your name:**
+      ${users[0].name.full(middle='full')}
+    show if: users[0].name.first == "This is just included so the Children review screen can have the table and the resume button"
+  #- Edit: children.revisit
+  #  button: |
+  #    **Children: (Edit to change names, addresses, and other guardians)**
+#
+  #    % for my_var in children:
+  #      * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
+  #    % endfor
 ---
 #add action is removed from subquestion due to issues with list comprehension in ALDocumentBundles. For posterity, here is the line:
 #${ children.add_action() }
@@ -2845,7 +2873,7 @@ subquestion: |
 id: parents review
 continue button field: children[i].parents.revisit
 question: |
-  Edit the information about ${children[i].new.name.full(middle='full')} (AKA ${children[i].name.full(middle='full')})'s parents, guardians, and custodians
+  Edit the information about ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s parents, guardians, and custodians
 subquestion: |
   If you have reached the end of the interview and need to add or delete a parent, guardian, or custodian, you will need to restart this program.
   
@@ -2880,7 +2908,7 @@ id: child review
 continue button field: x.review_child
 generic object: ALIndividual
 question: |
-  Edit ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s information
+  Edit ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s information
 review: 
   - Edit: x.name.first
     button: |
@@ -2896,7 +2924,7 @@ review:
       ${x.birthdate}
   - Edit: x.user_relationship
     button: |
-      **Your relationship to ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}):**
+      **Your relationship to ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}):**
       % if x.user_relationship == "bio":
       Biological parent
       % elif x.user_relationship == "adopt":
@@ -2910,15 +2938,15 @@ review:
       % endif
   - Edit: x.pending_arrests
     button: |
-      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any arrests for which charges have not been filed?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any arrests for which charges have not been filed?**
       ${word(yesno(x.pending_arrests))}
   - Edit: x.pending_charges
     button: |
-      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any pending misdemeanor or felony charges?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any pending misdemeanor or felony charges?**
       ${word(yesno(x.pending_charges))}
   - Edit: x.misdemeanors
     button: |
-      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?**
       % if x.misdemanors == False:
       No
       % else:
@@ -2930,7 +2958,7 @@ review:
       % endif
   - Edit: x.felonies
     button: |
-      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?**
       % if x.felonies == False:
       No
       % else:
@@ -2942,7 +2970,7 @@ review:
       % endif
   - Edit: x.registry
     button: |
-      **Do ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?**
+      **Do ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for a crime that required them register?**
       % if x.registry == False:
       No
       % elif x.registry_exceptions.all_false():
@@ -2965,7 +2993,7 @@ review:
       % endif
   - Edit: x.id_theft
     button: |
-      **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?**
       ${word(yesno(x.id_theft))}
   - Edit: x.change_reasons
     button: |
@@ -2982,7 +3010,7 @@ review:
       % endif
   - Edit: x.birth_place.in_america
     button: |
-      **${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s birth place:**
+      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s birth place:**
       % if x.birth_place.in_america == True:
       ${x.birth_place.city}, ${end_in_county(x.birth_place.county)}, ${x.birth_place.state}
       % else:
@@ -2990,17 +3018,17 @@ review:
       % endif
   - Edit: x.use_safe_address
     button: |
-      **Do you want to use ${users[0].address.on_one_line(bare=True)} as ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s address?**
+      **Do you want to use ${users[0].address.on_one_line(bare=True)} as ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address?**
       ${word(yesno(x.use_safe_address))}
     show if: use_safe_address 
   - Edit: x.address.address
     button: |
-      **${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')})'s address:**
+      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address:**
       ${x.address.on_one_line(bare=True)}
     show if: use_safe_address == False or x.use_safe_address == False
   - Edit: x.any_other_parents
     button: |
-     **Does ${x.new.name.full(middle='full')} (AKA ${x.name.full(middle='full')}) have any parents, guardians, or custodians other than you?**
+     **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any parents, guardians, or custodians other than you?**
      ${word(yesno(x.any_other_parents))}
   - Edit: x.parents.revisit
     button: |
