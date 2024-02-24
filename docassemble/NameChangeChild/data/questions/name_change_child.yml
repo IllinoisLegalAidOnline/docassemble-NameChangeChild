@@ -76,16 +76,17 @@ code: |
     if child.any_other_parents == True:
       interview_parent_index = 0
       while interview_parent_index < child.parents.number_gathered():
-        if child.parents[interview_parent_index].agree == True:
-          notarized_signature
-        else:
-          notice_waiver_info
-          child.parents[interview_parent_index].risk_check
-          if child.parents[interview_parent_index].risk_check == False:
-            if child.parents[interview_parent_index].address_known == True:
-              child.parents[interview_parent_index].receive_method
-            else:
-              published_notice_info
+        if child.parents[interview_parent_index].parent_type != "Parent" or child.parents[interview_parent_index].rights_terminated == False:
+          if child.parents[interview_parent_index].agree == True:
+            notarized_signature
+          else:
+            notice_waiver_info
+            child.parents[interview_parent_index].risk_check
+            if child.parents[interview_parent_index].risk_check == False:
+              if child.parents[interview_parent_index].address_known == True:
+                child.parents[interview_parent_index].receive_method
+              else:
+                published_notice_info
         interview_parent_index += 1
   waiver_reason_logic
   set_progress(60)
@@ -97,7 +98,7 @@ code: |
         order_against_parents
         orders.gather()
     #Following if statement is commented out as the hardship field on the form is available to anyone requesting a waiver.
-      hardship_text
+    hardship_text
     
   nav.set_section('section_filing')
   set_progress(80)
@@ -175,7 +176,8 @@ code: |
 code: |
   if children[i].any_other_parents == True:
     children[i].parents[j].name.first
-    children[i].parents[j].parent_type
+    if children[i].parents[j].parent_type == "Parent":
+      children[i].parents[j].rights_terminated
     #if children[i].parents[j].agree == True: 
       #children[i].parents[j].notarized_signature
     if children[i].parents[j].address_known == True:
@@ -541,8 +543,6 @@ id: any other parents
 question: |
   Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have any parents, guardians, or custodians other than you?
 subquestion: |
-  Do not include parents whose rights as parents have been terminated by a court order. 
-
   Anyone who has custody over ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is their custodian.
 fields:
   - no label: children[i].any_other_parents
@@ -611,6 +611,17 @@ choices:
   - Parent
   - Guardian
   - Custodian
+---
+id: parental rights terminated
+question: |
+  Were ${children[i].parents[j].name.full(middle='full')}'s parental rights terminated by a court order?
+subquestion: |
+  Only a court can terminate someone's parental rights. If a court has not done so, you should click **No** even if ${children[i].parents[j].name.full(middle='full')} does not do any childcare.
+  
+  To learn more, read ILAO's content on [**Parental responsibilities**](https://www.illinoislegalaid.org/legal-information/parental-responsibilities-custody-and-visitation).
+fields:
+  - no label: children[i].parents[j].rights_terminated
+    datatype: yesnoradio
 ---
 id: other parent agree
 question: |
@@ -714,31 +725,34 @@ code: |
       if child.parents.number_gathered() > 0:
         for parent in child.parents:
           #The following if statement is just included to ensure the parent address block is triggered if parent.address_known is set to true via review screen.
-          if parent.address_known == True:
-            parent.address.address
-          if parent.agree != True:
-            #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
-            notice_waiver_info  
-            if parent.address_known == False:
-              child_notice_would_be_published = True
-            #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
-            elif parent.risk_check == False:
-              parent.receive_method 
-            if parent.risk_check == True:
-              any_risk = True
-            else:
-              if parent.address_known == True:
-                any_to_notify = True
-                already_included = False
-                if parent_list_generator.number_gathered() > 0:                  
-                  for item in parent_list_generator:
-                    if parent.name.full(middle='full') == item.name.full(middle='full'):
-                      if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
-                          already_included = True                      
-                if already_included == False:
-                  parent_list_generator.append(parent)
-          else:  
-             notarized_signature
+          if parent.parent_type != "Parent" or parent.rights_terminated == False:
+            if parent.address_known == True:
+              parent.address.address
+            if parent.agree != True:
+              #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
+              notice_waiver_info  
+              if parent.address_known == False:
+                child_notice_would_be_published = True
+              #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
+              elif parent.risk_check == False:
+                
+                parent.receive_method 
+              
+              if parent.risk_check == True:
+                any_risk = True
+              else:
+                if parent.address_known == True:
+                  any_to_notify = True
+                  already_included = False
+                  if parent_list_generator.number_gathered() > 0:                  
+                    for item in parent_list_generator:
+                      if parent.name.full(middle='full') == item.name.full(middle='full'):
+                        if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                            already_included = True                      
+                  if already_included == False:
+                    parent_list_generator.append(parent)
+            else:  
+               notarized_signature
   parent_list_generator.there_is_another = False 
   waiver_reason_logic = True
 ---
@@ -774,6 +788,28 @@ id: waiver reasons
 question: |
   Why do you need a notice waiver?
 subquestion: |
+  % if children.number_gathered() == 1:
+  % if child_notice_would_be_published == True:
+  % if any_risk == False:
+  Based on your answers, you are concerned that publishing notice of your child's name change request could put them at risk.
+  % else:
+  Based on your answers, you are concerned that publishing notice of your child's name change request and notifying all their parents, guardians, and custodians could put them at risk.
+  % endif
+  % else:
+  Based on your answers, you are concerned that notifying all your child's parents, guardians, and custodians of their name change request could put them at risk.
+  % endif
+  % else:
+  % if child_notice_would_be_published == True:
+  % if any_risk == False:
+  Based on your answers, you are concerned that publishing notice of your children's name change requests could put them at risk.
+  % else:
+  Based on your answers, you are concerned that publishing notice of your children's name change requests and notifying all their parents, guardians, and custodians could put them at risk.
+  % endif
+  % else:
+  Based on your answers, you are concerned that notifying all your children's parents, guardians, and custodians of their name change requests could put them at risk.
+  % endif
+  % endif
+ 
   % if interview_type == 'adult':
   You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the person whose name would be changed.
   % else:
@@ -939,7 +975,7 @@ id: hardship reason
 question: |
   % if interview_type == "child":
   % if child_notice_would_be_published == True:
-  Explain why publication would be a hardship (optional)
+  Explain why publication and giving notice would be a hardship
   % else:
   Explain why giving notice would be a hardship
   % endif
@@ -1326,13 +1362,14 @@ code: |
     # new logic test
     if child.any_other_parents == True:
       if child.parents.number_gathered() > 1:
-        child.parents[0].parent_type = "ignore"
-        for parent in child.parents:
-          parent.parent_info_sheet.enabled = True
-          if parent.parent_type == "Custodian":
+        type_check_index = 1
+        while type_check_index < child.parents.number_gathered():
+          child.parents[type_check_index].parent_info_sheet.enabled = True
+          if child.parents[type_check_index].parent_type == "Custodian":
             child.has_custodian = True
-          elif parent.parent_type != "ignore":
+          else:
             child.has_guardian = True
+          type_check_index += 1
         child.parents[0].parent_info_sheet.enabled = False
       else:
         child.parents[0].parent_info_sheet.enabled = False
@@ -1985,15 +2022,23 @@ attachment:
     - "child_wishes": ${True if children[i].change_reasons["child_wants"] == True else False}
     - "other_reason_check": ${True if children[i].change_reasons["other"] == True else False}
     - "other_reason_text": ${ children[i].other_reason if children[i].change_reasons["other"] == True else ""}
-    - "no_other_parent": ${True if children[i].any_other_parents == False else False}
-    - "yes_other_parent": ${True if children[i].any_other_parents == True else False}
-    - "other_parent_first": ${children[i].parents[0].name.first if children[i].any_other_parents == True else ""}
-    - "other_parent_middle": ${children[i].parents[0].name.middle if children[i].any_other_parents == True else ""}
-    - "other_parent_last": ${children[i].parents[0].name.last if children[i].parents[0].name.suffix == "" else (children[i].parents[0].name.last + " " + children[i].parents[0].name.suffix)}
-    - "other_parent_address": ${children[i].parents[0].address.on_one_line(bare=True) if children[i].parents[0].address_known == True and children[i].any_other_parents == True else "Unknown"}
-    - "other_parent_disagree": ${ True if children[i].parents[0].agree == False and children[i].any_other_parents == True else False}
-    - "other_parent_dont_know": ${True if children[i].parents[0].agree is None and children[i].any_other_parents == True else False}
-    - "other_parent_agree": ${children[i].parents[0].agree if children[i].any_other_parents == True else False}
+    - "no_other_parent": ${True if children[i].any_other_parents == False or (children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True) else False}
+    - "terminated_text": ${"(Their rights were terminated by a court order)" if children[i].any_other_parents == True and children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True else ""}
+    - "yes_other_parent": ${True if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False)  else False}
+    - "other_parent_first": ${children[i].parents[0].name.first if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else ""}
+    - "other_parent_middle": ${children[i].parents[0].name.middle if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else ""}
+    - "other_parent_last": |
+        % if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False):
+        % if children[i].parents[0].name.suffix == "":
+        ${children[i].parents[0].name.last}
+        % else:
+        ${children[i].parents[0].name.last} ${children[i].parents[0].name.suffix}
+        % endif
+        % endif
+    - "other_parent_address": ${children[i].parents[0].address.on_one_line(bare=True) if children[i].parents[0].address_known == True and children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else ""}
+    - "other_parent_disagree": ${ True if children[i].parents[0].agree == False and children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else False}
+    - "other_parent_dont_know": ${True if children[i].parents[0].agree is None and children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else False}
+    - "other_parent_agree": ${children[i].parents[0].agree if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else False}
     - "third_parent_false": ${True if children[i].has_guardian == False else False}
     - "third_parent_true": ${children[i].has_guardian}
     - "custodian_true": ${children[i].has_custodian}
@@ -2198,7 +2243,7 @@ attachment:
     - "parental_address": ${children[i].parents[j].address.on_one_line(bare=True) if children[i].parents[j].address_known else "Unknown"}
     - "certified_or_sheriff": ${True if children[i].parents[j].address_known == True and children[i].parents[j].agree != True else False}
     - "publication_notice": ${True if children[i].parents[j].address_known == False and children[i].parents[j].agree != True and any_risk == False else False}
-    - "rights_terminated": ${False}
+    - "rights_terminated": ${True if children[i].parents[j].parent_type == "Parent" and children[i].parents[j].rights_terminated == True else False}
     - "disagrees": ${ True if children[i].parents[j].agree == False else False}
     - "dont_know": ${True if children[i].parents[j].agree is None else False}
     - "agrees": ${children[i].parents[j].agree}
@@ -2601,7 +2646,7 @@ subquestion: |
   So far you have told us about: 
   
   % for child in children:
-  * ${child.new.name.full(middle='full')} ( ${child.name.full(middle='full')})
+  * ${child.new.name.full(middle='full')} (${child.name.full(middle='full')})
   % endfor
 fields:
   - no label: children.there_is_another
