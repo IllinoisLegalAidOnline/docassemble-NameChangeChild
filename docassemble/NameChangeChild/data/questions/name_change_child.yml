@@ -2023,7 +2023,8 @@ attachment:
     - "other_reason_check": ${True if children[i].change_reasons["other"] == True else False}
     - "other_reason_text": ${ children[i].other_reason if children[i].change_reasons["other"] == True else ""}
     - "no_other_parent": ${True if children[i].any_other_parents == False or (children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True) else False}
-    - "terminated_text": ${"(Their rights were terminated by a court order)" if children[i].any_other_parents == True and children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True else ""}
+    #Next field commented out pending SME review  
+    #- "terminated_text": ${"(Their rights were terminated by a court order)" if children[i].any_other_parents == True and children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True else ""}
     - "yes_other_parent": ${True if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False)  else False}
     - "other_parent_first": ${children[i].parents[0].name.first if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else ""}
     - "other_parent_middle": ${children[i].parents[0].name.middle if children[i].any_other_parents == True and (children[i].parents[0].parent_type != "Parent" or children[i].parents[0].rights_terminated == False) else ""}
