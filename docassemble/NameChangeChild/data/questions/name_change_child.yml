@@ -618,7 +618,7 @@ question: |
 subquestion: |
   Only a court can terminate someone's parental rights. If a court has not done so, you should click **No** even if ${children[i].parents[j].name.full(middle='full')} does not do any childcare.
   
-  To learn more, read ILAO's content on [**Parental responsibilities**](https://www.illinoislegalaid.org/legal-information/parental-responsibilities-custody-and-visitation).
+  To learn more, read ILAO's content on [**terminating an ex's parental rights**](https://www.illinoislegalaid.org/legal-information/can-i-terminate-my-exs-parental-rights).
 fields:
   - no label: children[i].parents[j].rights_terminated
     datatype: yesnoradio
@@ -644,6 +644,8 @@ subquestion: |
   You can find a Notary Public at a bank or currency exchange, and in some libraries.
 
   There may be a small fee for getting your forms notarized.
+  
+  To learn more, read ILAO's content on [**What is a notary?**](https://www.illinoislegalaid.org/legal-information/what-notary)
 ---
 id: other parent address known
 question: |
@@ -704,6 +706,7 @@ depends on:
   - children[i].parents[j].name.middle
   - children[i].parents[j].name.last
   - children[i].parents[j].name.suffix
+  - children[i].parents[j].rights_terminated
 code: |
   #Parent list generator is used to gather the information of parents who the user must notify. This list is generated because just iterating through all known parents would include empty objects and parents who do not need to be notified.
   parent_list_generator.clear()
@@ -2379,7 +2382,7 @@ question: |
     Does your spouse have any convictions or were they placed on probation for any misdemeanors?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any misdemeanor convictions or were they placed on probation for any misdemeanors?
   % endif
 subquestion: |
   These can be misdemeanors in Illinois or any other state.
@@ -2402,7 +2405,7 @@ question: |
     Does your spouse have any convictions or were they placed on probation for any felonies?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any felony convictions or were they placed on probation for any felonies?
   % endif
 subquestion: |
   These can be felonies in Illinois or any other state.
@@ -2992,8 +2995,8 @@ review:
       ${word(yesno(x.pending_charges))}
   - Edit: x.misdemeanors
     button: |
-      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors?**
-      % if x.misdemanors == False:
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any misdemeanor convictions or were they placed on probation for any misdemeanors?**
+      % if x.misdemeanors == False:
       No
       % else:
       % if x.misdemeanor_pardon == True:
@@ -3004,7 +3007,7 @@ review:
       % endif
   - Edit: x.felonies
     button: |
-      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for any felonies?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any felony convictions or were they placed on probation for any felonies?**
       % if x.felonies == False:
       No
       % else:
@@ -3099,6 +3102,11 @@ review:
     button: |
       **Is ${x.name.full(middle='full')} a parent, guardian, or custodian?**
       ${x.parent_type}
+  - Edit: x.rights_terminated
+    button: |
+      **Were ${x.name.full(middle='full')}'s parental rights terminated?**
+      ${word(yesno(x.rights_terminated))}
+    show if: x.parent_type == "Parent"
   - Edit: x.agree
     button: |
       **Does ${x.name.full(middle='full')} agree to the name change?**
