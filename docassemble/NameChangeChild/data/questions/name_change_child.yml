@@ -617,8 +617,6 @@ question: |
   Were ${children[i].parents[j].name.full(middle='full')}'s parental rights terminated by a court order?
 subquestion: |
   Only a court can terminate someone's parental rights. If a court has not done so, you should click **No** even if ${children[i].parents[j].name.full(middle='full')} does not do any childcare.
-  
-  To learn more, read ILAO's content on [**terminating an ex's parental rights**](https://www.illinoislegalaid.org/legal-information/can-i-terminate-my-exs-parental-rights).
 fields:
   - no label: children[i].parents[j].rights_terminated
     datatype: yesnoradio
@@ -645,7 +643,7 @@ subquestion: |
 
   There may be a small fee for getting your forms notarized.
   
-  To learn more, read ILAO's content on [**What is a notary?**](https://www.illinoislegalaid.org/legal-information/what-notary)
+  To learn more, read ILAO's article on [**What is a notary?**](https://www.illinoislegalaid.org/legal-information/what-notary)
 ---
 id: other parent address known
 question: |
@@ -1367,11 +1365,14 @@ code: |
       if child.parents.number_gathered() > 1:
         type_check_index = 1
         while type_check_index < child.parents.number_gathered():
-          child.parents[type_check_index].parent_info_sheet.enabled = True
-          if child.parents[type_check_index].parent_type == "Custodian":
-            child.has_custodian = True
+          if child.parents[type_check_index].parent_type != "Parent" or child.parents[type_check_index].rights_terminated == False:
+            child.parents[type_check_index].parent_info_sheet.enabled = True
+            if child.parents[type_check_index].parent_type == "Custodian":
+              child.has_custodian = True
+            else:
+              child.has_guardian = True
           else:
-            child.has_guardian = True
+            child.parents[type_check_index].parent_info_sheet.enabled = False
           type_check_index += 1
         child.parents[0].parent_info_sheet.enabled = False
       else:
@@ -3000,9 +3001,9 @@ review:
       No
       % else:
       % if x.misdemeanor_pardon == True:
-      Yes, and they have been pardoned of them
+      Yes, and they have been pardoned of them.
       % else:
-      Yes, and they have not been pardoned for all of them
+      Yes, and they have not been pardoned for all of them.
       % endif
       % endif
   - Edit: x.felonies
@@ -3012,9 +3013,9 @@ review:
       No
       % else:
       % if x.felony_pardon == True:
-      Yes, and they have been pardoned of them
+      Yes, and they have been pardoned of them.
       % else:
-      Yes, and they have not been pardoned for all of them
+      Yes, and they have not been pardoned for all of them.
       % endif
       % endif
   - Edit: x.registry
