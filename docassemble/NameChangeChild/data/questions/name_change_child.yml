@@ -2657,12 +2657,12 @@ subquestion: |
 
   % if interview_type == 'adult':
     % if i == 0:
-    **Important**: If you were placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
+    **Important**: If you were placed on any of these registries and have not been pardoned, **you should not file a petition to change your name** unless one of these exceptions apply:
     % else:
-    **Important**: If they were placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
+    **Important**: If they were placed on any of these registries and have not been pardoned, **you should not file a petition to change your name** unless one of these exceptions apply:
     % endif
   % else:
-  **Important**: If they were placed on any of these registries and have not been pardoned, **it is a felony to file a petition to change your name** unless one of these exceptions apply:
+  **Important**: If they were placed on any of these registries and have not been pardoned, **you should not file a petition to change their name** unless one of these exceptions apply:
   % endif
   
   * Marriage
@@ -2670,7 +2670,7 @@ subquestion: |
   * Status as a victim of trafficking
   * **{Gender-related identity}**
 
-  These can be Illinois registries or similar registries in any other state.
+  These can be Illinois registries or similar registries in any other state. If none of these restrictions apply and you still want to change their name, you may want to speak to a lawyer. Use [**Get Legal Help**](https://www.illinoislegalaid.org/get-legal-help) to find free or low-cost legal services in your area.
 fields:
   - no label: x[i].registry
     datatype: yesnoradio
@@ -2888,7 +2888,7 @@ event: registry_kickout
 question: |
   Sorry
 subquestion: |
-  A person who committed crimes that require registration and is not pardoned cannot request a name change with this program. It may result in a felony.
+  A person who committed crimes that require registration and is not pardoned cannot request a name change with this program.
   
   These include crimes that require registration under the:
   
