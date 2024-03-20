@@ -24,6 +24,7 @@ objects:
   - children[i].birth_place: ALAddress
   #parent_list_generator exists as an list to collect any parents/guardians/custodians of the children who require notice. If a a parent/guardian/custodian does not agree to the name change and the user does not think it is an issue to notify them, they should be added to this list.
   - parent_list_generator: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
+  - published_children: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
   - children[i].convictions: DAList.using(object_type=Thing, there_are_any=True)
   - court_list: ALCourtLoader.using(file_name='docassemble.ILAO:data/sources/il_courts.xlsx')
   - orders: DAList.using(object_type=Thing, complete_attribute='complete', there_are_any=True)
@@ -148,7 +149,6 @@ code: |
     else:
       if children[i].user_relationship == "guardian":
         children[i].guardian_docs
-      #The criminal history questions can be found in the shared yml (although as of Jan 19 2024 they are in this yml as well)
       children[i].criminal_history_intro
       children[i].pending_arrests
       children[i].pending_charges
@@ -867,6 +867,27 @@ code: |
             else:  
                notarized_signature
   parent_list_generator.there_is_another = False 
+ 
+  #The following block generates a list of which children would need to be included in a publication notice. 
+  published_children.clear()
+  published_children.there_is_another = False
+  if child_notice_would_be_published == True:
+    for child in children:
+      already_included = False
+      if child.no_main_parent == False and child.main_other_parent.rights_terminated == False:
+        if child.main_other_parent.address_known == False and child.main_other_parent.agree != True and child.main_other_parent.risk_check != True:
+          published_children.append(child)
+          already_included = True
+      if child.any_other_parents == True and already_included == False:
+        child_publish_parent_index = 0
+        while child_publish_parent_index < child.parents.number_gathered():
+          if already_included == False:
+            if child.parents[child_publish_parent_index].parent_type != "Parent" or child.parents[child_publish_parent_index].rights_terminated == False:
+              if child.parents[child_publish_parent_index].address_known == False and child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check != True:
+                published_children.append(child)
+                already_included == True
+          child_publish_parent_index += 1
+  published_children.there_is_another = False
   waiver_reason_logic = True
 ---
 reconsider: True
@@ -1169,7 +1190,7 @@ continue button field: published_notice_info
 question: |
   About published notice
 subquestion: |
-  You said you don't know ${child.parents[interview_parent_index].name.full(middle='full')}'s address.
+  You said you don't know the address of a parent, guardian, or custodian who needs to be notified of the name change.
   
   If any of your children's parents, guardians, or custodians cannot be found, you must ask a local newspaper to publish notice of the name change request once a week for three weeks in a row.
 
@@ -2055,6 +2076,276 @@ attachment:
     - "alternate_address": ${use_safe_address}
     - "user_phone": ${phone_number_formatted(users[0].phone_number)}
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+---   
+attachment:
+  variable name: notice_of_court_date_7[i]
+  name: notice_of_court_date_7
+  filename: notice_of_court_date_7
+  skip undefined: True
+  editable: True
+  pdf template file: Notice_of_Court_Date_Minor2.pdf
+  fields:  
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "case_number": ${""}
+    - "court_date": ${""}
+    - "court_time": ${""}
+    - "court_am": ${False}
+    - "court_pm": ${False}
+    - "courtroom": ${""}
+    - "in_person": ${False}
+    #- "courtroom_address": ${courthouse_info}
+    - "remote": ${False}
+    - "video_website": ${""}
+    - "video_log_in": ${""}
+    - "call_in_number": ${""}
+    - "clerk_phone": ${""}
+    - "clerk_website": ${""}
+    - "other_parent_name": ${parent_list_generator[18].name.full(middle='full')}
+    - "other_parent_address": ${parent_list_generator[18].address.on_one_line(bare=True) if parent_list_generator[18].address_known == True else ""}
+    - "by_mail_1": ${True if parent_list_generator[18].receive_method == "mail" else False}
+    - "by_sheriff_1": ${True if parent_list_generator[18].receive_method == "sheriff" else False}
+    - "other_parent_notice_date": ${""}
+    - "guardian_name": ${parent_list_generator[19].name.full(middle='full')}
+    - "guardian_address": ${parent_list_generator[19].address.on_one_line(bare=True) if parent_list_generator[19].address_known == True else ""}
+    - "by_mail_2": ${True if parent_list_generator[19].receive_method == "mail" else False}
+    - "by_sheriff_2": ${True if parent_list_generator[19].receive_method == "sheriff" else False}
+    - "guardian_notice_date": ${""}
+    - "custodian_name": ${parent_list_generator[20].name.full(middle='full')}
+    - "custodian_address": ${parent_list_generator[20].address.on_one_line(bare=True) if parent_list_generator[20].address_known == True else ""}
+    - "by_mail_3": ${True if parent_list_generator[20].receive_method == "mail" else False}
+    - "by_sheriff_3": ${True if parent_list_generator[20].receive_method == "sheriff" else False}
+    - "custodian_notice_date": ${""}
+    - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "alternate_address": ${use_safe_address}
+    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
+    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+---
+attachment:
+  variable name: notice_of_court_date_8[i]
+  name: notice_of_court_date_8
+  filename: notice_of_court_date_8
+  skip undefined: True
+  editable: True
+  pdf template file: Notice_of_Court_Date_Minor2.pdf
+  fields:  
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "case_number": ${""}
+    - "court_date": ${""}
+    - "court_time": ${""}
+    - "court_am": ${False}
+    - "court_pm": ${False}
+    - "courtroom": ${""}
+    - "in_person": ${False}
+    #- "courtroom_address": ${courthouse_info}
+    - "remote": ${False}
+    - "video_website": ${""}
+    - "video_log_in": ${""}
+    - "call_in_number": ${""}
+    - "clerk_phone": ${""}
+    - "clerk_website": ${""}
+    - "other_parent_name": ${parent_list_generator[21].name.full(middle='full')}
+    - "other_parent_address": ${parent_list_generator[21].address.on_one_line(bare=True) if parent_list_generator[21].address_known == True else ""}
+    - "by_mail_1": ${True if parent_list_generator[21].receive_method == "mail" else False}
+    - "by_sheriff_1": ${True if parent_list_generator[21].receive_method == "sheriff" else False}
+    - "other_parent_notice_date": ${""}
+    - "guardian_name": ${parent_list_generator[22].name.full(middle='full')}
+    - "guardian_address": ${parent_list_generator[22].address.on_one_line(bare=True) if parent_list_generator[22].address_known == True else ""}
+    - "by_mail_2": ${True if parent_list_generator[22].receive_method == "mail" else False}
+    - "by_sheriff_2": ${True if parent_list_generator[22].receive_method == "sheriff" else False}
+    - "guardian_notice_date": ${""}
+    - "custodian_name": ${parent_list_generator[23].name.full(middle='full')}
+    - "custodian_address": ${parent_list_generator[23].address.on_one_line(bare=True) if parent_list_generator[23].address_known == True else ""}
+    - "by_mail_3": ${True if parent_list_generator[23].receive_method == "mail" else False}
+    - "by_sheriff_3": ${True if parent_list_generator[23].receive_method == "sheriff" else False}
+    - "custodian_notice_date": ${""}
+    - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "alternate_address": ${use_safe_address}
+    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
+    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+---
+attachment:
+  variable name: notice_of_court_date_9[i]
+  name: notice_of_court_date_9
+  filename: notice_of_court_date_9
+  skip undefined: True
+  editable: True
+  pdf template file: Notice_of_Court_Date_Minor2.pdf
+  fields:  
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "case_number": ${""}
+    - "court_date": ${""}
+    - "court_time": ${""}
+    - "court_am": ${False}
+    - "court_pm": ${False}
+    - "courtroom": ${""}
+    - "in_person": ${False}
+    #- "courtroom_address": ${courthouse_info}
+    - "remote": ${False}
+    - "video_website": ${""}
+    - "video_log_in": ${""}
+    - "call_in_number": ${""}
+    - "clerk_phone": ${""}
+    - "clerk_website": ${""}
+    - "other_parent_name": ${parent_list_generator[24].name.full(middle='full')}
+    - "other_parent_address": ${parent_list_generator[24].address.on_one_line(bare=True) if parent_list_generator[24].address_known == True else ""}
+    - "by_mail_1": ${True if parent_list_generator[24].receive_method == "mail" else False}
+    - "by_sheriff_1": ${True if parent_list_generator[24].receive_method == "sheriff" else False}
+    - "other_parent_notice_date": ${""}
+    - "guardian_name": ${parent_list_generator[25].name.full(middle='full')}
+    - "guardian_address": ${parent_list_generator[25].address.on_one_line(bare=True) if parent_list_generator[25].address_known == True else ""}
+    - "by_mail_2": ${True if parent_list_generator[25].receive_method == "mail" else False}
+    - "by_sheriff_2": ${True if parent_list_generator[25].receive_method == "sheriff" else False}
+    - "guardian_notice_date": ${""}
+    - "custodian_name": ${parent_list_generator[26].name.full(middle='full')}
+    - "custodian_address": ${parent_list_generator[26].address.on_one_line(bare=True) if parent_list_generator[26].address_known == True else ""}
+    - "by_mail_3": ${True if parent_list_generator[26].receive_method == "mail" else False}
+    - "by_sheriff_3": ${True if parent_list_generator[26].receive_method == "sheriff" else False}
+    - "custodian_notice_date": ${""}
+    - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "alternate_address": ${use_safe_address}
+    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
+    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+---
+attachment:
+  variable name: notice_of_court_date_10[i]
+  name: notice_of_court_date_10
+  filename: notice_of_court_date_10
+  skip undefined: True
+  editable: True
+  pdf template file: Notice_of_Court_Date_Minor2.pdf
+  fields:  
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "case_number": ${""}
+    - "court_date": ${""}
+    - "court_time": ${""}
+    - "court_am": ${False}
+    - "court_pm": ${False}
+    - "courtroom": ${""}
+    - "in_person": ${False}
+    #- "courtroom_address": ${courthouse_info}
+    - "remote": ${False}
+    - "video_website": ${""}
+    - "video_log_in": ${""}
+    - "call_in_number": ${""}
+    - "clerk_phone": ${""}
+    - "clerk_website": ${""}
+    - "other_parent_name": ${parent_list_generator[27].name.full(middle='full')}
+    - "other_parent_address": ${parent_list_generator[27].address.on_one_line(bare=True) if parent_list_generator[27].address_known == True else ""}
+    - "by_mail_1": ${True if parent_list_generator[27].receive_method == "mail" else False}
+    - "by_sheriff_1": ${True if parent_list_generator[27].receive_method == "sheriff" else False}
+    - "other_parent_notice_date": ${""}
+    - "guardian_name": ${parent_list_generator[28].name.full(middle='full')}
+    - "guardian_address": ${parent_list_generator[28].address.on_one_line(bare=True) if parent_list_generator[28].address_known == True else ""}
+    - "by_mail_2": ${True if parent_list_generator[28].receive_method == "mail" else False}
+    - "by_sheriff_2": ${True if parent_list_generator[28].receive_method == "sheriff" else False}
+    - "guardian_notice_date": ${""}
+    - "custodian_name": ${parent_list_generator[29].name.full(middle='full')}
+    - "custodian_address": ${parent_list_generator[29].address.on_one_line(bare=True) if parent_list_generator[29].address_known == True else ""}
+    - "by_mail_3": ${True if parent_list_generator[29].receive_method == "mail" else False}
+    - "by_sheriff_3": ${True if parent_list_generator[29].receive_method == "sheriff" else False}
+    - "custodian_notice_date": ${""}
+    - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "alternate_address": ${use_safe_address}
+    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
+    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+---
+attachment:
+  variable name: notice_of_court_date_11[i]
+  name: notice_of_court_date_11
+  filename: notice_of_court_date_11
+  skip undefined: True
+  editable: True
+  pdf template file: Notice_of_Court_Date_Minor2.pdf
+  fields:  
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "case_number": ${""}
+    - "court_date": ${""}
+    - "court_time": ${""}
+    - "court_am": ${False}
+    - "court_pm": ${False}
+    - "courtroom": ${""}
+    - "in_person": ${False}
+    #- "courtroom_address": ${courthouse_info}
+    - "remote": ${False}
+    - "video_website": ${""}
+    - "video_log_in": ${""}
+    - "call_in_number": ${""}
+    - "clerk_phone": ${""}
+    - "clerk_website": ${""}
+    - "other_parent_name": ${parent_list_generator[30].name.full(middle='full')}
+    - "other_parent_address": ${parent_list_generator[30].address.on_one_line(bare=True) if parent_list_generator[30].address_known == True else ""}
+    - "by_mail_1": ${True if parent_list_generator[30].receive_method == "mail" else False}
+    - "by_sheriff_1": ${True if parent_list_generator[30].receive_method == "sheriff" else False}
+    - "other_parent_notice_date": ${""}
+    - "guardian_name": ${parent_list_generator[31].name.full(middle='full')}
+    - "guardian_address": ${parent_list_generator[31].address.on_one_line(bare=True) if parent_list_generator[31].address_known == True else ""}
+    - "by_mail_2": ${True if parent_list_generator[31].receive_method == "mail" else False}
+    - "by_sheriff_2": ${True if parent_list_generator[31].receive_method == "sheriff" else False}
+    - "guardian_notice_date": ${""}
+    - "custodian_name": ${parent_list_generator[32].name.full(middle='full')}
+    - "custodian_address": ${parent_list_generator[32].address.on_one_line(bare=True) if parent_list_generator[32].address_known == True else ""}
+    - "by_mail_3": ${True if parent_list_generator[32].receive_method == "mail" else False}
+    - "by_sheriff_3": ${True if parent_list_generator[32].receive_method == "sheriff" else False}
+    - "custodian_notice_date": ${""}
+    - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "alternate_address": ${use_safe_address}
+    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
+    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+---
+attachment:
+  variable name: notice_of_court_date_12[i]
+  name: notice_of_court_date_12
+  filename: notice_of_court_date_12
+  skip undefined: True
+  editable: True
+  pdf template file: Notice_of_Court_Date_Minor2.pdf
+  fields:  
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "case_number": ${""}
+    - "court_date": ${""}
+    - "court_time": ${""}
+    - "court_am": ${False}
+    - "court_pm": ${False}
+    - "courtroom": ${""}
+    - "in_person": ${False}
+    #- "courtroom_address": ${courthouse_info}
+    - "remote": ${False}
+    - "video_website": ${""}
+    - "video_log_in": ${""}
+    - "call_in_number": ${""}
+    - "clerk_phone": ${""}
+    - "clerk_website": ${""}
+    - "other_parent_name": ${parent_list_generator[33].name.full(middle='full')}
+    - "other_parent_address": ${parent_list_generator[33].address.on_one_line(bare=True) if parent_list_generator[33].address_known == True else ""}
+    - "by_mail_1": ${True if parent_list_generator[33].receive_method == "mail" else False}
+    - "by_sheriff_1": ${True if parent_list_generator[33].receive_method == "sheriff" else False}
+    - "other_parent_notice_date": ${""}
+    - "guardian_name": ${parent_list_generator[34].name.full(middle='full')}
+    - "guardian_address": ${parent_list_generator[34].address.on_one_line(bare=True) if parent_list_generator[34].address_known == True else ""}
+    - "by_mail_2": ${True if parent_list_generator[34].receive_method == "mail" else False}
+    - "by_sheriff_2": ${True if parent_list_generator[34].receive_method == "sheriff" else False}
+    - "guardian_notice_date": ${""}
+    - "custodian_name": ${parent_list_generator[35].name.full(middle='full')}
+    - "custodian_address": ${parent_list_generator[35].address.on_one_line(bare=True) if parent_list_generator[35].address_known == True else ""}
+    - "by_mail_3": ${True if parent_list_generator[35].receive_method == "mail" else False}
+    - "by_sheriff_3": ${True if parent_list_generator[35].receive_method == "sheriff" else False}
+    - "custodian_notice_date": ${""}
+    - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "alternate_address": ${use_safe_address}
+    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
+    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
 ---
 attachment:
   variable name: order[i]
@@ -2079,15 +2370,15 @@ attachment:
     - "filing_county": ${filing_county}
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
-    - "child_old_name_1": ${children[0].name.full(middle='full')}
-    - "child_new_name_1": ${children[0].new.name.full(middle='full')}
-    - "child_old_name_2": ${children[1].name.full(middle='full')}
-    - "child_new_name_2": ${children[1].new.name.full(middle='full')}
-    - "child_old_name_3": ${children[2].name.full(middle='full')}
-    - "child_new_name_3": ${children[2].new.name.full(middle='full')}
-    - "child_old_name_4": ${children[3].name.full(middle='full')}
-    - "child_new_name_4": ${children[3].new.name.full(middle='full')}
-    - "more_than_four_kids": ${True if children.number_gathered() > 4 else False}
+    - "child_old_name_1": ${published_children[0].name.full(middle='full')}
+    - "child_new_name_1": ${published_children[0].new.name.full(middle='full')}
+    - "child_old_name_2": ${published_children[1].name.full(middle='full')}
+    - "child_new_name_2": ${published_children[1].new.name.full(middle='full')}
+    - "child_old_name_3": ${published_children[2].name.full(middle='full')}
+    - "child_new_name_3": ${published_children[2].new.name.full(middle='full')}
+    - "child_old_name_4": ${published_children[3].name.full(middle='full')}
+    - "child_new_name_4": ${published_children[3].new.name.full(middle='full')}
+    - "more_than_four_kids": ${True if published_children.number_gathered() > 4 else False}
     - "court_date": ${""}
     - "court_time": ${""}
     - "court_am": ${False}
