@@ -147,6 +147,9 @@ code: |
     if children[i].user_relationship == "other":
       not_parent_or_guardian_kickout
     else:
+      if children[i].user_relationship == "bio" or children[i].user_relationship == "adopt":
+        if children[i].no_parental_rights == True:
+          user_terminated_rights_kickout
       if children[i].user_relationship == "guardian":
         children[i].guardian_docs
       children[i].criminal_history_intro
@@ -564,6 +567,8 @@ question: |
   What is the name of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent?
 subquestion: |
   If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has a known biological parent or parent listed on the birth certificate other than you, you should enter their name even if they are dead.
+  
+  If the other parent is dead, you can tell the judge that.
 fields:
   - First: children[i].main_other_parent.name.first
     required: False
@@ -575,7 +580,7 @@ fields:
     code: |
       name_suffix()
     required: False 
-  - ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) does not have another parent: children[i].no_main_parent
+  - ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) does not have another parent.: children[i].no_main_parent
     datatype: yesnowide
 validation code: |
   if ((not showifdef('children[i].main_other_parent.name.first') or not showifdef('children[i].main_other_parent.name.last')) and \
@@ -659,8 +664,27 @@ choices:
   - Guardian
   - Custodian
 ---
+id: user terminated rights kickout
+event: user_terminated_rights_kickout
+question: |
+  Sorry
+subquestion: |
+  You cannot request a name change for a child you do not have parental rights over.
+  
+  Click **Back** if you made a mistake. Or you can talk with a lawyer to discuss your options. Use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
+buttons:
+  - Exit: exit
+  - Restart: restart
+---
+id: user parental rights terminated
+question: |
+  Were your parental rights over ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) terminated by a court order?
+fields:
+  - no label: children[i].no_parental_rights
+    datatype: yesnoradio
+---
 generic object: ALIndividual
-id: parental rights terminated
+id: other parental rights terminated
 question: |
   Were ${x.name.full(middle='full')}'s parental rights terminated by a court order?
 subquestion: |
@@ -676,7 +700,7 @@ question: |
 subquestion: |
   If ${children[i].parents[j].name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
   
-  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request before you file the forms, you should select **No** here.
+  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request before you file the forms for any reason, you should select **No** here.
 fields:
   - no label: children[i].parents[j].agree
     datatype: yesnomaybe
@@ -703,7 +727,7 @@ subquestion: |
 
   There may be a small fee for getting your forms notarized.
   
-  To learn more, read ILAO's article on [**What is a notary?**](https://www.illinoislegalaid.org/legal-information/what-notary)
+  To learn more, read ILAO's article, [**What is a notary?**](https://www.illinoislegalaid.org/legal-information/what-notary)
 ---
 generic object: ALIndividual
 id: other parent address known
@@ -769,6 +793,14 @@ content: |
 #This code block handles logic for generating the text of the waiver reason question
 depends on:
   - children[i].any_other_parents
+  - children[i].name.first
+  - children[i].name.middle
+  - children[i].name.last
+  - children[i].name.suffix
+  - children[i].name.new.first
+  - children[i].name.new.middle
+  - children[i].name.new.last
+  - children[i].name.suffix
   - children[i].parents[j].agree
   - children[i].parents[j].risk_check
   - children[i].parents[j].address_known
@@ -822,6 +854,7 @@ code: |
             any_risk = True
           else:
             if child.main_other_parent.address_known == True:
+              child.main_other_parent.address.address
               any_to_notify = True
               already_included = False
               if parent_list_generator.number_gathered() > 0:                  
@@ -871,22 +904,28 @@ code: |
   #The following block generates a list of which children would need to be included in a publication notice. 
   published_children.clear()
   published_children.there_is_another = False
+  include_publication_notice = False
   if child_notice_would_be_published == True:
     for child in children:
-      already_included = False
+      child.safe_publish = True
+      child.need_publish = False
       if child.no_main_parent == False and child.main_other_parent.rights_terminated == False:
         if child.main_other_parent.address_known == False and child.main_other_parent.agree != True and child.main_other_parent.risk_check != True:
-          published_children.append(child)
-          already_included = True
-      if child.any_other_parents == True and already_included == False:
+          child.need_publish = True
+        elif child.main_other_parent.agree != True and child.main_other_parent.risk_check == True:
+          child.safe_publish = False
+      if child.any_other_parents == True:
         child_publish_parent_index = 0
         while child_publish_parent_index < child.parents.number_gathered():
-          if already_included == False:
-            if child.parents[child_publish_parent_index].parent_type != "Parent" or child.parents[child_publish_parent_index].rights_terminated == False:
-              if child.parents[child_publish_parent_index].address_known == False and child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check != True:
-                published_children.append(child)
-                already_included == True
+          if child.parents[child_publish_parent_index].parent_type != "Parent" or child.parents[child_publish_parent_index].rights_terminated == False:
+            if child.parents[child_publish_parent_index].address_known == False and child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check != True:
+              child.need_publish = True
+            elif child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check == True:
+              child.safe_publish = False
           child_publish_parent_index += 1
+      if child.safe_publish == True and child.need_publish == True:
+        published_children.append(child)
+        include_publication_notice = True
   published_children.there_is_another = False
   waiver_reason_logic = True
 ---
@@ -968,7 +1007,7 @@ subquestion: |
   % endif
   % endif
   
-  This program can make a *Motion to Waive Notice and Publication* for you, but judges rarely grant such a motion. Judges usually require you to notify all of a child's parents, guardians, and custodians.
+  This program can make a *Motion to Waive Notice and Publication* for you, but the judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
   
   If you do not want to give notice, you may want a lawyer to help you. Use [**Get Legal Help**](https://www.illinoislegalaid.org/get-legal-help) to find free or low-cost legal services in your area.
 ---
@@ -1620,7 +1659,7 @@ code: |
   if any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
     motion_to_waive_notice.enabled = True
     order_to_waive_notice.enabled = True
-  elif child_notice_would_be_published == True:
+  if include_publication_notice == True and showifdef('request_waiver') == False:
     publication_notice.enabled = True
   if any_to_notify == True:  
 
