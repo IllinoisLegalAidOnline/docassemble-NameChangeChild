@@ -566,9 +566,9 @@ id: main other parent
 question: |
   What is the name of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent?
 subquestion: |
-  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has a known biological parent or parent listed on the birth certificate other than you, you should enter their name even if they are dead.
+  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has a known biological parent or parent listed on the birth certificate other than you, you should enter their name even if they have died.
   
-  If the other parent is dead, you can tell the judge that.
+  If the other parent has died, you can tell the judge that.
 fields:
   - First: children[i].main_other_parent.name.first
     required: False
@@ -700,7 +700,13 @@ question: |
 subquestion: |
   If ${children[i].parents[j].name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
   
-  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request before you file the forms for any reason, you should select **No** here.
+  If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request, you should select **No** here.
+  
+  If you are not certain whether ${children[i].parents[j].name.full(middle='full')} would agree to the name change, you may want to ask them before making the name change request forms.
+  
+  % if children[i].parents[j].parent_type == "Parent":
+  ${collapse_template(dead_agree)}
+  % endif
 fields:
   - no label: children[i].parents[j].agree
     datatype: yesnomaybe
@@ -711,10 +717,22 @@ question: |
 subquestion: |
   If ${children[i].main_other_parent.name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
   
-  If ${children[i].main_other_parent.name.full(middle='full')} cannot sign the name change request before you file the forms, you should select **No** here.
+  If ${children[i].main_other_parent.name.full(middle='full')} cannot sign the name change request, you should select **No** here.
+  
+  If you are not certain whether ${children[i].main_other_parent.name.full(middle='full')} would agree to the name change, you may want to ask them before making the name change request forms.
+  
+  ${collapse_template(dead_agree)}
 fields:
   - no label: children[i].main_other_parent.agree
     datatype: yesnomaybe
+---
+template: dead_agree
+subject: |
+  **What if they have died?**
+content : |
+  If the child's other parent has died, you may select **I don't know.**
+  
+  You will likely need to explain to the judge that the other parent has passed away.
 ---
 id: other parent notarized signature
 continue button field: notarized_signature
