@@ -3226,7 +3226,11 @@ id: parents there is another
 question: |
   Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have another parent, guardian, or custodian?
 subquestion: |
+  % if children[i].no_main_parent == False:
   So far you have told us about ${comma_and_list(children[i].main_other_parent, children[i].parents)}.
+  % else:
+  So far you have told us about ${comma_and_list(children[i].parents)}.
+  % endif
 fields:
   - no label: children[i].parents.there_is_another
     datatype: yesnoradio
