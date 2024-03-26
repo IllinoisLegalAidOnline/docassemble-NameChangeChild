@@ -2843,7 +2843,7 @@ attachment:
     - "clerk_phone": ${""}
     - "clerk_website": ${""}
     - "other_parent_name": ${parent_list_generator[i].name.full(middle='full')}
-    - "other_parent_address": ${parent_list_generator[i].address.on_one_line(bare=True) if parent_list_generator[i].address_known == True else ""}
+    - "other_parent_address": ${parent_list_generator[i].address.on_one_line(bare=True) if parent_list_generator[i].address_known == True else "Unknown"}
     - "by_mail_1": ${True if parent_list_generator[i].receive_method == "mail" else False}
     - "by_sheriff_1": ${True if parent_list_generator[i].receive_method == "sheriff" else False}
     - "other_parent_notice_date": ${""}
