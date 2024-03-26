@@ -1008,20 +1008,20 @@ subquestion: |
   % if any_risk == False:
   Based on your answers, you are concerned that publishing notice of your child's name change request could put them at risk.
   % else:
-  Based on your answers, you are concerned that publishing notice of your child's name change request and notifying all their parents, guardians, and custodians could put them at risk.
+  Based on your answers, you are concerned that publishing notice of your child's name change request and notifying at least one of their parents, guardians, and custodians could put them at risk.
   % endif
   % else:
-  Based on your answers, you are concerned that notifying all your child's parents, guardians, and custodians of their name change request could put them at risk.
+  Based on your answers, you are concerned that notifying at least one of your child's parents, guardians, and custodians of their name change request could put them at risk.
   % endif
   % else:
   % if child_notice_would_be_published == True:
   % if any_risk == False:
   Based on your answers, you are concerned that publishing notice of your children's name change requests could put them at risk.
   % else:
-  Based on your answers, you are concerned that publishing notice of your children's name change requests and notifying all their parents, guardians, and custodians could put them at risk.
+  Based on your answers, you are concerned that publishing notice of your children's name change requests and notifying at least one of their parents, guardians, and custodians could put them at risk.
   % endif
   % else:
-  Based on your answers, you are concerned that notifying all your children's parents, guardians, and custodians of their name change requests could put them at risk.
+  Based on your answers, you are concerned that notifying at least one of your children's parents, guardians, and custodians of their name change requests could put them at risk.
   % endif
   % endif
   
@@ -1677,7 +1677,7 @@ code: |
   if any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
     motion_to_waive_notice.enabled = True
     order_to_waive_notice.enabled = True
-  if include_publication_notice == True and showifdef('request_waiver') == False:
+  if include_publication_notice == True and showifdef('request_waiver') != True:
     publication_notice.enabled = True
   if any_to_notify == True:  
 
@@ -3226,7 +3226,7 @@ id: parents there is another
 question: |
   Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have another parent, guardian, or custodian?
 subquestion: |
-  So far you have told us about ${comma_and_list(children[i].parents)}.
+  So far you have told us about ${comma_and_list(children[i].main_other_parent, children[i].parents)}.
 fields:
   - no label: children[i].parents.there_is_another
     datatype: yesnoradio
