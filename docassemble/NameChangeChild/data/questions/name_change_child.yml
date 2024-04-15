@@ -183,13 +183,14 @@ code: |
     #The way the forms are designed, they allow for a given child to have, in addition to the user, one other parent, one other guardian, and one other custodian. As such, the current program only allows for a the parents list associated with a given child to have 3 entries: 0 for parent, 1 for guardian, and 2 for custodian. Pending SME review, this may be retooled to allow for over 3 parental units per child. Why does this code code block go through each parents[i] individually instead of looping them? Because the program wants to keep a given parent type associated with a specific index. This probably could be done more efficiently with a loop, but I foolishly didn't set it up that way.
       #if children[i].include_other_parent == True: 
       #  children[i].parents[0].name.first
+      about_other_parentals
       if children[i].no_main_parent == False:
-        about_other_parentals
+        
         children[i].main_other_parent.rights_terminated
         if children[i].main_other_parent.address_known == True:
           children[i].main_other_parent.address.address
       if children[i].any_other_parents == True:
-        about_other_parentals
+        
         children[i].parents.gather()
         
             
