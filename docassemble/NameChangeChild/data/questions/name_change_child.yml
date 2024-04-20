@@ -237,6 +237,8 @@ subquestion: |
   This program helps you prepare court forms to change the name of minor children.
   
   The forms you create can only be used in Illinois.
+  
+  To learn more, read ILAO's article about [**Starting a case to change a child's name**](https://www.illinoislegalaid.org/legal-information/changing-childs-name).
 field: sees_nav_bar
 ---
 id: instructions
@@ -249,7 +251,7 @@ subquestion: |
   * Your child must be under 18 years old, and 
   * You must have lived in Illinois for at least 6 months.
   
-  You will also need details about your child's criminal history.
+  You will also need details if your child has a criminal history.
 
   If your child is 18 years old or older, you cannot file a name change on their behalf. They can use ILAO's [**Name change for an adult**](https://www.illinoislegalaid.org/legal-information/name-change-adult) Easy Form.
   
@@ -276,7 +278,7 @@ question: |
 subquestion: |
   After you download your forms, you must file them with the court in the county where you live. This program **does not** file your forms for you.
   
-  When you file your forms, the court clerk will give you a court date. Usually, you have to notify any of the child's other parents, guardians, or custodians who didn't sign on to the name change. However, if giving them notice would be a hardship for you or your child, including risking health or safety, you can ask the judge to skip that step by filing a motion to waive notice. This program will help you make the forms you need either way.
+  When you file your forms, the court clerk will give you a court date. Usually, you have to notify any of the child's other parents, guardians, or custodians. However, if giving them notice would be a hardship for you or your child, including risking health or safety, you can ask the judge to skip that step by filing a motion to waive notice. This program will help you make the forms you need either way.
   
   To learn more, read the *How to Change a Name for Minor Children* instructions you can download at the end of this program. 
 --- 
@@ -404,7 +406,7 @@ id: child birth date
 question: |
   When was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) born?
 subquestion: |
-  This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](www.illinoislegalaid.org/node/36321).
+  This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/legal-information/name-change-adult).
 fields:
   - Birth date: children[i].birthdate
     datatype: ThreePartsDate
@@ -416,7 +418,7 @@ continue button field: children[i].too_old
 question: |
   Sorry
 subquestion: |
-  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](www.illinoislegalaid.org/node/36321).
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/legal-information/name-change-adult).
 
   If you have another child whose name you would like to change, click **Next**.
 ---
@@ -1080,7 +1082,7 @@ question: |
 subquestion: |
   You can enter details about the order on another screen.
 
-  If you do any of these kinds of orders, you can click **Back** and change your answer.
+  If you do not have any of these kinds of orders, you can click **Back** and change your answer.
 fields:
   - I have or did have protection from: protective_order
     datatype: checkboxes
@@ -1132,10 +1134,20 @@ question: |
   % if i == 0:
   Protective order case details
   % else:
-  More protective order case details
+  ${ordinal(i)} protective order case details
   % endif
 subquestion: |
-  For any of the following, enter more information to your *Motion to Waive Notice and Publication*:
+  % if i == 0:
+  Add information about the protective order.
+  % else:
+  Add information about the ${ordinal(i)} protective order.
+  % endif
+  
+  % if protective_order.true_values().number_gathered() > 1:
+  You said you have the these types of protective order: 
+  % else:
+  You said you have this type of protective order:
+  % endif
   
   % if protective_order['op']:
    * An Order of Protection
@@ -2766,7 +2778,7 @@ subquestion: |
 review:
   - Edit: children.revisit
     button: |
-      **Children: (Edit to change names, addresses, and other guardians)**
+      **Children: (Edit to change if and how you will give parents and guardians notice )**
 
       % for my_var in children:
         * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
@@ -2829,7 +2841,7 @@ section: Children and parents
 id: children review screen
 event: section_children
 question: |
-  Children and parents
+  Children and parents information
 subquestion: |
   Edit your answers below.
   
@@ -2876,7 +2888,7 @@ rows: children
 columns:
   - Current name: |
       row_item.name.full(middle="full") if defined("row_item.name.first") else ""
-  - New name, address, and other guardians: |
+  - New name, address, criminal records, and other guardians: |
       action_button_html(url_action(row_item.attr_name("review_child")), label="Edit", icon="pencil-alt")
 delete buttons: True
 confirm: True
@@ -2899,6 +2911,8 @@ generic object: ALIndividual
 question: |
   Edit ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s information
 review: 
+  - note: |
+      #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s identity
   - Edit: x.name.first
     button: |
       **Current name:**
@@ -2925,6 +2939,39 @@ review:
       % elif x.user_relationship == "other":
       Other
       % endif
+  - Edit: x.change_reasons
+    button: |
+      **Why are you changing this child's name from "${x.name.full(middle='full')}" to "${x.new.name.full(middle='full')}?"**
+      
+      % if x.change_reasons['user_wants']:
+      * I want to change their name.
+      % endif
+      % if x.change_reasons['child_wants']:
+      * They want to change their name.
+      % endif
+      % if x.change_reasons['other']:
+      * ${x.other_reason}
+      % endif
+  - Edit: x.birth_place.in_america
+    button: |
+      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s birth place:**
+      % if x.birth_place.in_america == True:
+      ${x.birth_place.city}, ${end_in_county(x.birth_place.county)}, ${x.birth_place.state}
+      % else:
+      ${x.birth_place.city}, ${x.birth_place.country}
+      % endif
+  - Edit: x.use_safe_address
+    button: |
+      **Do you want to use ${users[0].address.on_one_line(bare=True)} as ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address?**
+      ${word(yesno(x.use_safe_address))}
+    show if: use_safe_address 
+  - Edit: x.address.address
+    button: |
+      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address:**
+      ${x.address.on_one_line(bare=True)}
+    show if: use_safe_address == False or x.use_safe_address == False
+  - note: |
+      #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s criminal history
   - Edit: x.pending_arrests
     button: |
       **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any arrests for which charges have not been filed?**
@@ -2984,37 +3031,8 @@ review:
     button: |
       **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?**
       ${word(yesno(x.id_theft))}
-  - Edit: x.change_reasons
-    button: |
-      **Why are you changing this child's name from "${x.name.full(middle='full')}" to "${x.new.name.full(middle='full')}?"**
-      
-      % if x.change_reasons['user_wants']:
-      * I want to change their name.
-      % endif
-      % if x.change_reasons['child_wants']:
-      * They want to change their name.
-      % endif
-      % if x.change_reasons['other']:
-      * ${x.other_reason}
-      % endif
-  - Edit: x.birth_place.in_america
-    button: |
-      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s birth place:**
-      % if x.birth_place.in_america == True:
-      ${x.birth_place.city}, ${end_in_county(x.birth_place.county)}, ${x.birth_place.state}
-      % else:
-      ${x.birth_place.city}, ${x.birth_place.country}
-      % endif
-  - Edit: x.use_safe_address
-    button: |
-      **Do you want to use ${users[0].address.on_one_line(bare=True)} as ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address?**
-      ${word(yesno(x.use_safe_address))}
-    show if: use_safe_address 
-  - Edit: x.address.address
-    button: |
-      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address:**
-      ${x.address.on_one_line(bare=True)}
-    show if: use_safe_address == False or x.use_safe_address == False
+  - note: |
+      #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s other parent
   - Edit: x.no_main_parent
     button: |
       **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have a parent other than you?**
@@ -3068,6 +3086,8 @@ review:
       I will publish notice of this Request in a local newspaper.
       % endif
     show if: x.no_main_parent == False and x.main_other_parent.agree != True and x.main_other_parent.risk_check == False
+  - note: |
+      #### Other parents, guardians, and custodians
   - Edit: x.any_other_parents
     button: |
       % if x.no_main_parent == False:
@@ -3095,6 +3115,8 @@ generic object: ALIndividual
 question: |
   Edit ${x.name.full(middle='full')}'s information
 review: 
+  - note: |
+      #### About ${x.name.full(middle='full')}
   - Edit: x.name.first
     button: |
       **Name of parent, guardian, or custodian:**
@@ -3116,6 +3138,8 @@ review:
       % else:
       ${word(yesno(x.agree))}
       % endif
+  - note: |
+      #### Notice
   - Edit: x.address_known
     button: |
       **Do you know ${x.name.full(middle='full')}'s address?**
