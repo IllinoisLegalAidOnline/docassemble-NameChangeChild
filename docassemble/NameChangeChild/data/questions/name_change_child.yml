@@ -238,7 +238,7 @@ subquestion: |
   
   The forms you create can only be used in Illinois.
   
-  To learn more, read ILAO's article about [**Starting a case to change a child's name**](https://www.illinoislegalaid.org/legal-information/changing-childs-name).
+  To learn more, read ILAO's article about [**Starting a case to change a child's name**](https://www.illinoislegalaid.org/node/30586).
 field: sees_nav_bar
 ---
 id: instructions
@@ -406,7 +406,7 @@ id: child birth date
 question: |
   When was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) born?
 subquestion: |
-  This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/legal-information/name-change-adult).
+  This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/node/36321).
 fields:
   - Birth date: children[i].birthdate
     datatype: ThreePartsDate
@@ -1082,7 +1082,7 @@ question: |
 subquestion: |
   You can enter details about the order on another screen.
 
-  If you do not have any of these kinds of orders, you can click **Back** and change your answer.
+  If you do not have or did not have any of these kinds of orders, you can click **Back** and change your answer.
 fields:
   - I have or did have protection from: protective_order
     datatype: checkboxes
@@ -1137,17 +1137,9 @@ question: |
   ${ordinal(i)} protective order case details
   % endif
 subquestion: |
-  % if i == 0:
-  Add information about the protective order.
-  % else:
-  Add information about the ${ordinal(i)} protective order.
-  % endif
+  For your *Motion to Waive Notice and Publication*, enter more information about protective orders.
   
-  % if protective_order.true_values().number_gathered() > 1:
-  You said you have the these types of protective order: 
-  % else:
-  You said you have this type of protective order:
-  % endif
+  You said you have: 
   
   % if protective_order['op']:
    * An Order of Protection
@@ -1873,17 +1865,18 @@ code: |
   #debug_list.clear()
   elements_for_notice_bundle = []
   
-  for index, person in enumerate(parent_list_generator):
-    if (index % 3) == 0:
-      person.notice_of_court_date.enabled = True
-      #debug_list.append(person)
-      elements_for_notice_bundle.append(person.notice_of_court_date)
-      if (index + 1) < parent_list_generator.number_gathered():
-        person.second_person = parent_list_generator[index + 1]
-      if (index + 2) < parent_list_generator.number_gathered():
-        person.third_person = parent_list_generator[index + 2]
-    else:
-      person.notice_of_court_date.enabled = False
+  if parent_list_generator.number_gathered() > 0:
+    for index, person in enumerate(parent_list_generator):
+      if (index % 3) == 0:
+        person.notice_of_court_date.enabled = True
+        #debug_list.append(person)
+        elements_for_notice_bundle.append(person.notice_of_court_date)
+        if (index + 1) < parent_list_generator.number_gathered():
+          person.second_person = parent_list_generator[index + 1]
+        if (index + 2) < parent_list_generator.number_gathered():
+          person.third_person = parent_list_generator[index + 2]
+      else:
+        person.notice_of_court_date.enabled = False
       
   notice_of_date_bundle.elements = elements_for_notice_bundle
   refresh_notice_bundle = True
@@ -2867,8 +2860,6 @@ continue button field: children.revisit
 question: |
   Edit the information about the children
 subquestion: |
-  If you have reached the end of the interview and need to add or delete a child, you will need to restart this program.
-
   ${ children.table }
   
   ${ children.add_action() }
