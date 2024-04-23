@@ -418,7 +418,7 @@ continue button field: children[i].too_old
 question: |
   Sorry
 subquestion: |
-  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/legal-information/name-change-adult).
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) is an adult. If they want to change their name, they will have to do so their self. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/node/36321).
 
   If you have another child whose name you would like to change, click **Next**.
 ---
@@ -1139,7 +1139,7 @@ question: |
 subquestion: |
   For your *Motion to Waive Notice and Publication*, enter more information about protective orders.
   
-  You said you have: 
+  You said you have or did have: 
   
   % if protective_order['op']:
    * An Order of Protection
@@ -1159,6 +1159,8 @@ subquestion: |
   % if protective_order['other_order']:
    * A similar protective order outside Illinois
   % endif
+  
+  Enter information about one case at a time. You can enter other cases on another screen.
 fields:
   - Case number: orders[i].number
     maxlength: 30
