@@ -1448,7 +1448,7 @@ subquestion: |
   
   &nbsp;
 ---
-id: download page get docs screen
+id: get docs screen
 event: get_docs_screen
 question: |
   Download
