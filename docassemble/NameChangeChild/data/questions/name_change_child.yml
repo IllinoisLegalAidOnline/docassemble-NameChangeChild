@@ -76,7 +76,10 @@ code: |
   nav.set_section('section_notice')
   for child in children:
     #The code for the child.main_other_parent object should mirror the code in the while loop for each individual in the child.parents list.
-    if child.no_main_parent == False:
+    if child.other_parent_status == "deceased_parent":
+      child.deceased_info
+    elif child.other_parent_status == "has_other_parent":
+      child.main_other_parent.name.first
       if child.main_other_parent.rights_terminated == False:
         if child.main_other_parent.agree == True:
           notarized_signature
@@ -189,6 +192,8 @@ code: |
         children[i].main_other_parent.rights_terminated
         if children[i].main_other_parent.address_known == True:
           children[i].main_other_parent.address.address
+      elif children[i].other_parent_status == "deceased_parent":
+        children[i].deceased_info
       if children[i].any_other_parents == True:
         
         children[i].parents.gather()
@@ -568,30 +573,50 @@ fields:
       states_list() 
   - ZIP code: children[i].address.zip
 ---
+id: have other parent
+question: |
+  Does ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) have another parent?
+subquestion: |
+  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has another known biological parent or parent listed on the birth certificate other than you, you should click **Yes** unless they have died.
+  
+  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) only has guardians or custodians, you should click **No**. The program will ask about guardians and custodians later in this interview.
+field: children[i].other_parent_status
+choices:
+  - Yes: has_other_parent
+  - No: no_other_parent
+  - Their other parent has died.: deceased_parent
+#This question is a post-release addition; the name change forms now have a checkbox to track whether the other parent has passed away. With this addition, I have added this question instead of including an option in the other parent name page to note a child does not have another "main" parent. Rather than taking the diligent path of rewriting all the program's references to x.no_main_parent with references to x.other_parent_status, I am taking the efficient path of setting the x.no_main_parent variable in this question's validation code. If you are reading this because my choice has led to a mess of spaghetti code, you may curse my name.
+validation code: |
+  if children[i].other_parent_status == "has_other_parent":
+    children[i].no_main_parent = False
+  else:
+    children[i].no_main_parent = True
+---
+id: deceased info
+continue button field: children[i].deceased_info
+question: |
+  About ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s deceased parent
+subquestion: |
+  You may need to prove to the court that ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent has passed away. You may want to attach a copy of their death certificate to the name change petition.
+---
 id: main other parent
 question: |
   What is the name of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent?
-subquestion: |
-  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has a known biological parent or parent listed on the birth certificate other than you, you should enter their name even if they have died.
-  
-  If the other parent has died, you can tell the judge that.
 fields:
   - First: children[i].main_other_parent.name.first
-    required: False
-  - Middle: children[i].main_other_parent.name.middle
-    required: False
+  - Middle: children[i].main_other_parent.name.middle  
+    required: False 
   - Last: children[i].main_other_parent.name.last
-    required: False
   - Suffix: children[i].main_other_parent.name.suffix
     code: |
       name_suffix()
     required: False 
-  - ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) does not have another parent.: children[i].no_main_parent
-    datatype: yesnowide
-validation code: |
-  if ((not showifdef('children[i].main_other_parent.name.first') or not showifdef('children[i].main_other_parent.name.last')) and \
-      (children[i].no_main_parent== False)):
-    validation_error(word("If there is not another parent, you need to click this box."), field="children[i].no_main_parent")
+#  - ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) does not have another parent.: children[i].no_main_parent
+#    datatype: yesnowide
+#validation code: |
+#  if ((not showifdef('children[i].main_other_parent.name.first') or not showifdef('children[i].main_other_parent.name.last')) and \
+#      (children[i].no_main_parent== False)):
+#    validation_error(word("If there is not another parent, you need to click this box."), field="children[i].no_main_parent")
 ---
 id: any other parents
 question: |
@@ -709,10 +734,6 @@ subquestion: |
   If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request, you should select **No** here.
   
   If you are not certain whether ${children[i].parents[j].name.full(middle='full')} would agree to the name change, you may want to ask them before making the name change request forms.
-  
-  % if children[i].parents[j].parent_type == "Parent":
-  ${collapse_template(dead_agree)}
-  % endif
 fields:
   - no label: children[i].parents[j].agree
     datatype: yesnomaybe
@@ -726,8 +747,6 @@ subquestion: |
   If ${children[i].main_other_parent.name.full(middle='full')} cannot sign the name change request, you should select **No** here.
   
   If you are not certain whether ${children[i].main_other_parent.name.full(middle='full')} would agree to the name change, you may want to ask them before making the name change request forms.
-  
-  ${collapse_template(dead_agree)}
 fields:
   - no label: children[i].main_other_parent.agree
     datatype: yesnomaybe
@@ -967,7 +986,7 @@ code: |
       child.include_main_parent_on_child_sheet = False
       if child.any_other_parents == True:
         if child.parents[0].parent_type == "Parent":
-          if child.parents[0].rights_terminated == False:
+          if child.parents[0].rights_terminated == False and child.other_parent_status != "deceased_parent":
             child.include_parents_zero_on_child_sheet = True
           else:
             child.include_parents_zero_on_child_sheet = False
@@ -1547,39 +1566,41 @@ code: |
   #notices.enabled = False
   
   #For some reason the program doesn't always behave unless I set this enabled value to True outside of the for loop. 
-  children[0].child_information.enabled = True 
-  #child_loop_index = 0 
-  #while child_loop_index < children.number_gathered():
-  for child in children:  
-    
-    child.has_custodian = False
-    child.has_guardian = False
-    child.child_information.enabled = True
-    child.additional_parents_bundle.enabled = False
-    child.additional_criminal_history.enabled = False
-    
-    if child.felonies or child.registry or child.id_theft:
-      if child.convictions.number() > 3:
-        child.additional_criminal_history.enabled = True
-
-    # new logic test
+  if children.there_are_any and children.number_gathered() > 0:
+    children[0].child_information.enabled = True 
+    #child_loop_index = 0 
+    #while child_loop_index < children.number_gathered():
+  
+    for child in children:  
       
-    if child.any_other_parents == True:
-      type_check_index = 0
-      while type_check_index < child.parents.number_gathered():
-        if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
-          child.parents[type_check_index].parent_info_sheet.enabled = False
-        else:
-          child.parents[type_check_index].parent_info_sheet.enabled = True
-          child.additional_parents_bundle.enabled = True
-          if child.parents[type_check_index].parent_type == "Custodian":
-            child.has_custodian = True
+      child.has_custodian = False
+      child.has_guardian = False
+      child.child_information.enabled = True
+      child.additional_parents_bundle.enabled = False
+      child.additional_criminal_history.enabled = False
+      
+      if child.felonies or child.registry or child.id_theft:
+        if child.convictions.number() > 3:
+          child.additional_criminal_history.enabled = True
+  
+      # new logic test
+        
+      if child.any_other_parents == True:
+        type_check_index = 0
+        while type_check_index < child.parents.number_gathered():
+          if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
+            child.parents[type_check_index].parent_info_sheet.enabled = False
           else:
-            child.has_guardian = True
-        type_check_index += 1
-    else:
-      child.parents[0].parent_info_sheet.enabled = False
-    
+            child.parents[type_check_index].parent_info_sheet.enabled = True
+            child.additional_parents_bundle.enabled = True
+            if child.parents[type_check_index].parent_type == "Custodian":
+              child.has_custodian = True
+            else:
+              child.has_guardian = True
+          type_check_index += 1
+      else:
+        child.parents[0].parent_info_sheet.enabled = False
+      
         
   motion_to_waive_notice.enabled = False
   order_to_waive_notice.enabled = False
@@ -1640,12 +1661,15 @@ attachment:
     - "four_child_new_last": ${children[3].new.name.last if children[3].new.name.suffix == "" else (children[3].new.name.last + " " + children[3].new.name.suffix)}
     - "more_than_four_kids": ${True if children.number_gathered() > 4 else False}
     - "child_info_attached": ${True}
-    - "illinois_start_date": ${format_date(started_living_in_illinois, format='long')}
+    #- "illinois_start_date": ${format_date(started_living_in_illinois, format='long')}
     - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
+    - "six_months": ${True}
     - "user_address": ${users[0].address.on_one_line(bare=True)}
     - "user_phone": ${phone_number_formatted(users[0].phone_number)}
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
+    - "user_hide_address_cb": ${ True if use_safe_address else False }
 ---
+#Change this to a list comprehension?
 attachment:
   variable name: additional_children[i]
   name: additional_children
@@ -1655,6 +1679,8 @@ attachment:
   pdf template file: Request_for_Name_Change_Additional.pdf
   fields:
     - "case_number": ${""}
+    - "filing_county": ${filing_county}
+    - "user_name": ${ users[0].name.full(middle='full')}
     - "child_old_first_5": ${children[4].name.first}
     - "child_old_middle_5": ${children[4].name.middle}
     - "child_old_last_5": ${children[4].name.last if children[4].name.suffix == "" else (children[4].name.last + " " + children[4].name.suffix)}
@@ -1697,12 +1723,6 @@ attachment:
     - "child_new_first_11": ${children[10].new.name.first}
     - "child_new_middle_11": ${children[10].new.name.middle}
     - "child_new_last_11": ${children[10].new.name.last if children[10].new.name.suffix == "" else (children[10].new.name.last + " " + children[10].new.name.suffix)}
-    - "child_old_first_12": ${children[11].name.first}
-    - "child_old_middle_12": ${children[11].name.middle}
-    - "child_old_last_12": ${children[11].name.last if children[11].name.suffix == "" else (children[11].name.last + " " + children[11].name.suffix)}
-    - "child_new_first_12": ${children[11].new.name.first}
-    - "child_new_middle_12": ${children[11].new.name.middle}
-    - "child_new_last_12": ${children[11].new.name.last if children[11].new.name.suffix == "" else (children[11].new.name.last + " " + children[11].new.name.suffix)}
 ---
 attachment:
   variable name: order_to_waive_notice[i]
@@ -1942,7 +1962,17 @@ attachment:
     - "child_wishes": ${True if children[i].change_reasons["child_wants"] == True else False}
     - "other_reason_check": ${True if children[i].change_reasons["other"] == True else False}
     - "other_reason_text": ${ children[i].other_reason if children[i].change_reasons["other"] == True else ""}
-    - "no_other_parent": ${False if children[i].include_parents_zero_on_child_sheet == True or children[i].include_main_parent_on_child_sheet == True else True}
+    - "no_other_parent": |
+        % if children[i].include_parents_zero_on_child_sheet:
+        ${False}
+        % elif children[i].include_main_parent_on_child_sheet:
+        ${False}
+        % elif children[i].other_parent_status == "deceased_parent":
+        ${False}
+        % else:
+        ${True}
+        % endif
+    - "dead_other_parent": ${True if children[i].other_parent_status == "deceased_parent" else False}
     #Next field commented out pending SME review  
     #- "terminated_text": ${"(Their rights were terminated by a court order)" if children[i].any_other_parents == True and children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True else ""}
     - "yes_other_parent": ${True if children[i].include_parents_zero_on_child_sheet == True or children[i].include_main_parent_on_child_sheet == True else False}
@@ -2230,6 +2260,8 @@ attachment:
   pdf template file: Request_for_Name_Change_Additonal_Parent_Minor.pdf
   fields: 
     - "case_number": ${""}
+    - "user_name": ${ users[0].name.full(middle='full')}
+    - "filing_county": ${filing_county}
     - "is_parent_or_guardian": ${True if children[i].parents[j].parent_type != "Custodian" else False}
     - "is_custodian": ${True if children[i].parents[j].parent_type == "Custodian" else False}
     - "parental_first": ${children[i].parents[j].name.first}
@@ -3026,11 +3058,21 @@ review:
       ${word(yesno(x.id_theft))}
   - note: |
       #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s other parent
-  - Edit: x.no_main_parent
+  #- Edit: x.no_main_parent
+  #  button: |
+  #    **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have a parent other than you?**
+  #    % if x.no_main_parent == False:
+  #    Yes
+  #    % else:
+  #    No
+  #    % endif
+  - Edit: x.other_parent_status
     button: |
       **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have a parent other than you?**
-      % if x.no_main_parent == False:
+      % if x.other_parent_status == "has_other_parent":
       Yes
+      % elif x.other_parent_status == "deceased_parent":
+      No, their other parent has passed away.
       % else:
       No
       % endif
