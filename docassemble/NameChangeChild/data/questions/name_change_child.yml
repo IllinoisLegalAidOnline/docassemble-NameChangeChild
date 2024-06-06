@@ -26,6 +26,7 @@ objects:
   - court_list: ALCourtLoader.using(file_name='docassemble.ILAO:data/sources/il_courts.xlsx')
   - orders: DAList.using(object_type=Thing, complete_attribute='complete', there_are_any=True)
   - debug_list: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
+  - included_children: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
 ---
 # Road map
 sections:
@@ -73,39 +74,41 @@ code: |
   nav.set_section('section_children')
   set_progress(40)
   children.gather()
+  check_for_skips
   nav.set_section('section_notice')
   for child in children:
     #The code for the child.main_other_parent object should mirror the code in the while loop for each individual in the child.parents list.
-    if child.other_parent_status == "deceased_parent":
-      child.deceased_info
-    elif child.other_parent_status == "has_other_parent":
-      child.main_other_parent.name.first
-      if child.main_other_parent.rights_terminated == False:
-        if child.main_other_parent.agree == True:
-          notarized_signature
-        else:
-          notice_waiver_info
-          child.main_other_parent.risk_check
-          if child.main_other_parent.risk_check == False:
-            if child.main_other_parent.address_known == True:
-              child.main_other_parent.receive_method
-            else:
-              published_notice_info
-    if child.any_other_parents == True:
-      interview_parent_index = 0
-      while interview_parent_index < child.parents.number_gathered():
-        if child.parents[interview_parent_index].parent_type != "Parent" or child.parents[interview_parent_index].rights_terminated == False:
-          if child.parents[interview_parent_index].agree == True:
+    if not child.skip:
+      if child.other_parent_status == "deceased_parent":
+        child.deceased_info
+      elif child.other_parent_status == "has_other_parent":
+        child.main_other_parent.name.first
+        if child.main_other_parent.rights_terminated == False:
+          if child.main_other_parent.agree == True:
             notarized_signature
           else:
             notice_waiver_info
-            child.parents[interview_parent_index].risk_check
-            if child.parents[interview_parent_index].risk_check == False:
-              if child.parents[interview_parent_index].address_known == True:
-                child.parents[interview_parent_index].receive_method
+            child.main_other_parent.risk_check
+            if child.main_other_parent.risk_check == False:
+              if child.main_other_parent.address_known == True:
+                child.main_other_parent.receive_method
               else:
                 published_notice_info
-        interview_parent_index += 1
+      if child.any_other_parents == True:
+        interview_parent_index = 0
+        while interview_parent_index < child.parents.number_gathered():
+          if child.parents[interview_parent_index].parent_type != "Parent" or child.parents[interview_parent_index].rights_terminated == False:
+            if child.parents[interview_parent_index].agree == True:
+              notarized_signature
+            else:
+              notice_waiver_info
+              child.parents[interview_parent_index].risk_check
+              if child.parents[interview_parent_index].risk_check == False:
+                if child.parents[interview_parent_index].address_known == True:
+                  child.parents[interview_parent_index].receive_method
+                else:
+                  published_notice_info
+          interview_parent_index += 1
   waiver_reason_logic
   set_progress(60)
 
@@ -136,12 +139,32 @@ code: |
   set_progress(100)
   nav.set_section('section_download')
   #enabled_enabler
+  pop_skipped_children
   parent_on_child_sheet_logic
-  forms_assembling
   refresh_bundles
   if any_to_notify:
     refresh_notice_bundle
+  forms_assembling
   get_docs_screen
+---
+code: |
+  stuff_to_snapshot = {
+  	'start_time': str(current_datetime().format_datetime()),
+  	'started_interview': True, 
+  	}
+    
+  stuff_to_snapshot['user_zip'] = showifdef('users[0].address.zip')
+
+  stuff_to_snapshot['downloaded_forms'] = showifdef('forms_assembling')
+  
+  stuff_to_snapshot['number_of_children_included'] = showifdef('included_children_count')
+  
+  stuff_to_snapshot['number_of_children_excluded'] = showifdef('excluded_children_count')
+  
+  store_variables_snapshot(
+  	data=stuff_to_snapshot, persistent=True
+  	)
+  snapshot_interview_state = True
 ---
 #Gather loop for children list
 code: |
@@ -153,51 +176,54 @@ code: |
     if children[i].user_relationship == "other":
       not_parent_or_guardian_kickout
     else:
-      if children[i].user_relationship == "bio" or children[i].user_relationship == "adopt":
-        if children[i].no_parental_rights == True:
-          user_terminated_rights_kickout
-      if children[i].user_relationship == "guardian":
-        children[i].guardian_docs
-      children[i].criminal_history_intro
-      children[i].pending_arrests
-      children[i].pending_charges
-      children[i].misdemeanors
-      children[i].felonies
-      children[i].registry
-      if children[i].registry and children[i].registry_exceptions.all_false():
-        registry_kickout
-      elif children[i].registry:
-        registry_notification
-      children[i].id_theft
-      if children[i].felonies or children[i].registry or children[i].id_theft:
-        children[i].conviction_intro
-  	    children[i].convictions.gather()
-
-      children[i].change_reasons
-  
-      children[i].birth_place.in_america
-      if use_safe_address == True:
-        if children[i].use_safe_address == False:
-          children[i].address.address
+      if children[i].age_in_years(decimals=True) >= 0.5 and not children[i].six_months_in_illinois:
+        children[i].six_month_kickout
       else:
-        children[i].use_safe_address = False
-        children[i].address.address
+        if children[i].user_relationship == "bio" or children[i].user_relationship == "adopt":
+          if children[i].no_parental_rights == True:
+            user_terminated_rights_kickout
+        if children[i].user_relationship == "guardian":
+          children[i].guardian_docs
+        children[i].criminal_history_intro
+        children[i].pending_arrests
+        children[i].pending_charges
+        children[i].misdemeanors
+        children[i].felonies
+        children[i].registry
+        if children[i].registry and children[i].registry_exceptions.all_false():
+          registry_kickout
+        elif children[i].registry:
+          registry_notification
+        children[i].id_theft
+        if children[i].felonies or children[i].registry or children[i].id_theft:
+          children[i].conviction_intro
+  	      children[i].convictions.gather()
+  
+        children[i].change_reasons
     
+        children[i].birth_place.in_america
+        if use_safe_address == True:
+          if children[i].use_safe_address == False:
+            children[i].address.address
+        else:
+          children[i].use_safe_address = False
+          children[i].address.address
+      
     #The way the forms are designed, they allow for a given child to have, in addition to the user, one other parent, one other guardian, and one other custodian. As such, the current program only allows for a the parents list associated with a given child to have 3 entries: 0 for parent, 1 for guardian, and 2 for custodian. Pending SME review, this may be retooled to allow for over 3 parental units per child. Why does this code code block go through each parents[i] individually instead of looping them? Because the program wants to keep a given parent type associated with a specific index. This probably could be done more efficiently with a loop, but I foolishly didn't set it up that way.
       #if children[i].include_other_parent == True: 
       #  children[i].parents[0].name.first
-      about_other_parentals
-      if children[i].no_main_parent == False:
-        
-        children[i].main_other_parent.rights_terminated
-        if children[i].main_other_parent.address_known == True:
-          children[i].main_other_parent.address.address
-      elif children[i].other_parent_status == "deceased_parent":
-        children[i].deceased_info
-      if children[i].any_other_parents == True:
-        
-        children[i].parents.gather()
-        
+        about_other_parentals
+        if children[i].no_main_parent == False:
+          
+          children[i].main_other_parent.rights_terminated
+          if children[i].main_other_parent.address_known == True:
+            children[i].main_other_parent.address.address
+        elif children[i].other_parent_status == "deceased_parent":
+          children[i].deceased_info
+        if children[i].any_other_parents == True:
+          
+          children[i].parents.gather()
+          
             
    #Between the name change request form and the additional children form, there are space for 12 children. 
   if i == 11:
@@ -206,25 +232,27 @@ code: |
 ---
 #gather parent gather list
 code: |
-  if children[i].any_other_parents == True:
-    children[i].parents[j].name.first
-    if children[i].parents[j].parent_type == "Parent":
-      children[i].parents[j].rights_terminated
-    #if children[i].parents[j].agree == True: 
-      #children[i].parents[j].notarized_signature
-    if children[i].parents[j].address_known == True:
-      children[i].parents[j].address.address
-    #if children[i].parents[j].agree != True:
-      #children[i].parents[j].notice_waiver_info  
-      #if children[i].parents[j].risk_check == False:
-        #if children[i].parents[j].address_known == True:
-          #children[i].parents[j].receive_method 
-      #if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
-        #children[i].parents[j].published_notice_info 
-      #elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
-        #children[i].parents[j].published_notice_info 
-  else:
-    children[i].parents.there_is_another = False
+  if not children[i].skip:
+    if children[i].any_other_parents == True:
+      children[i].parents[j].name.first
+      if children[i].parents[j].parent_type == "Parent":
+        children[i].parents[j].rights_terminated
+      #if children[i].parents[j].agree == True: 
+        #children[i].parents[j].notarized_signature
+      if children[i].parents[j].address_known == True:
+        children[i].parents[j].address.address
+      #if children[i].parents[j].agree != True:
+        #children[i].parents[j].notice_waiver_info  
+        #if children[i].parents[j].risk_check == False:
+          #if children[i].parents[j].address_known == True:
+            #children[i].parents[j].receive_method 
+        #if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
+          #children[i].parents[j].published_notice_info 
+        #elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
+          #children[i].parents[j].published_notice_info 
+    else:
+      children[i].parents.there_is_another = False
+      
   children[i].parents[j].complete = True
 ---
 #Used to calculate the amount of time the user has been living in Illinois, which needs to be 6 months or more.
@@ -341,6 +369,17 @@ buttons:
   - Exit: exit
   - Restart: restart
 ---
+id: child six month kickout
+continue button field: children[i].six_month_kickout
+question: |
+  Sorry
+subquestion: |
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) must have lived in Illinois for at least 6 months to change their name in Illinois.
+  
+  You can use the [**Legal Services Corporation website**](https://www.lsc.gov/about-lsc/what-legal-aid/get-legal-help) to find a legal aid organization in another state. Or you can use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
+  
+  If you want to change the name of a different child, click **Next**.
+---
 id: time in illinois
 question: |
   When did you start living in Illinois?
@@ -397,6 +436,8 @@ subquestion: |
   
   If you want to change the name of multiple children, you will be able to enter the other children's information on later screens.
   % endif
+  
+  **Note:** If their legal name has a suffix that is not listed, you can enter it in the **Last name** field with their last name.
 fields:
   - First: children[i].name.first
   - Middle: children[i].name.middle
@@ -417,6 +458,15 @@ fields:
     datatype: ThreePartsDate
     alMax: ${today().format("yyyy-MM-dd")}
     alMin: ${today().minus(years=18).format("yyyy-MM-dd")}
+---
+id: child six months
+question: |
+  Has ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) lived in Illinois for at least 6 months?
+subquestion: |
+  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has lived in Illinois without taking a break to live in another state or country, click **Yes**.
+fields:
+  - no label: children[i].six_months_in_illinois
+    datatype: yesnoradio
 ---
 id: child too old
 continue button field: children[i].too_old
@@ -526,6 +576,8 @@ fields:
 id: child new name
 question: |
   What would you like to change ${children[i].name.full(middle='full')}'s name to?
+subquestion: |
+  **Note:** If their new name uses a suffix that is not listed, you can enter it in the **Last name** field with their last name.
 fields:
   - First: children[i].new.name.first
   - Middle: children[i].new.name.middle
@@ -833,6 +885,24 @@ content: |
   
   If you do not know a parent or guardian's address, you can notify them by newspaper. This program can make a *Publication Notice of Court Date* form.
 ---
+reconsider: True
+code: |
+  for child in children:
+    if child.age_in_years() >= 18:
+      child.skip = True
+    elif child.user_relationship == "other":
+      child.skip = True
+    elif child.age_in_years(decimals=True) >= 0.5 and not child.six_months_in_illinois:
+      child.skip = True
+    elif child.user_relationship == "bio" or child.user_relationship == "adopt":
+      if child.no_parental_rights == True:
+        child.skip = True
+      else:
+        child.skip = False
+    else:
+      child.skip = False
+  check_for_skips = True
+---
 #This code block handles logic for generating the text of the waiver reason question
 #depends on:
 #  - children[i].any_other_parents
@@ -879,70 +949,72 @@ code: |
  
   #In addition to setting the above flags to True if necessary, this for loop also generates the parent_list_generator object.
   for child in children:
-    #The code for the main_other_parent object should match the code in the for loop for the parents list.
-    if child.no_main_parent == False:
-      if child.main_other_parent.rights_terminated == False:
-        if child.main_other_parent.address_known == True:
-          child.main_other_parent.address.address
-        if child.main_other_parent.agree != True:
-          #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
-          notice_waiver_info  
-          if child.main_other_parent.address_known == False:
-            child_notice_would_be_published = True
-          #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
-          elif child.main_other_parent.risk_check == False:
-            
-            child.main_other_parent.receive_method 
-          
-          if child.main_other_parent.risk_check == True:
-            any_risk = True
-          else:
-            if child.main_other_parent.address_known == True:
-              child.main_other_parent.address.address
-              any_to_notify = True
-              already_included = False
-              if parent_list_generator.number_gathered() > 0:                  
-                for item in parent_list_generator:
-                  if child.main_other_parent.name.full(middle='full') == item.name.full(middle='full'):
-                    if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
-                        already_included = True                      
-              if already_included == False:
-                parent_list_generator.append(child.main_other_parent)
-        else:  
-           notarized_signature
+    if not child.skip:
     
-    if child.any_other_parents == True:
-      if child.parents.number_gathered() > 0:
-        for parent in child.parents:
-          #The following if statement is just included to ensure the parent address block is triggered if parent.address_known is set to true via review screen.
-          if parent.parent_type != "Parent" or parent.rights_terminated == False:
-            if parent.address_known == True:
-              parent.address.address
-            if parent.agree != True:
-              #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
-              notice_waiver_info  
-              if parent.address_known == False:
-                child_notice_would_be_published = True
-              #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
-              elif parent.risk_check == False:
-                
-                parent.receive_method 
+    #The code for the main_other_parent object should match the code in the for loop for the parents list.  
+      if child.no_main_parent == False:
+        if child.main_other_parent.rights_terminated == False:
+          if child.main_other_parent.address_known == True:
+            child.main_other_parent.address.address
+          if child.main_other_parent.agree != True:
+            #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
+            notice_waiver_info  
+            if child.main_other_parent.address_known == False:
+              child_notice_would_be_published = True
+            #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
+            elif child.main_other_parent.risk_check == False:
               
-              if parent.risk_check == True:
-                any_risk = True
-              else:
-                if parent.address_known == True:
-                  any_to_notify = True
-                  already_included = False
-                  if parent_list_generator.number_gathered() > 0:                  
-                    for item in parent_list_generator:
-                      if parent.name.full(middle='full') == item.name.full(middle='full'):
-                        if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
-                            already_included = True                      
-                  if already_included == False:
-                    parent_list_generator.append(parent)
-            else:  
-               notarized_signature
+              child.main_other_parent.receive_method 
+            
+            if child.main_other_parent.risk_check == True:
+              any_risk = True
+            else:
+              if child.main_other_parent.address_known == True:
+                child.main_other_parent.address.address
+                any_to_notify = True
+                already_included = False
+                if parent_list_generator.number_gathered() > 0:                  
+                  for item in parent_list_generator:
+                    if child.main_other_parent.name.full(middle='full') == item.name.full(middle='full'):
+                      if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                          already_included = True                      
+                if already_included == False:
+                  parent_list_generator.append(child.main_other_parent)
+          else:  
+             notarized_signature
+      
+      if child.any_other_parents == True:
+        if child.parents.number_gathered() > 0:
+          for parent in child.parents:
+            #The following if statement is just included to ensure the parent address block is triggered if parent.address_known is set to true via review screen.
+            if parent.parent_type != "Parent" or parent.rights_terminated == False:
+              if parent.address_known == True:
+                parent.address.address
+              if parent.agree != True:
+                #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
+                notice_waiver_info  
+                if parent.address_known == False:
+                  child_notice_would_be_published = True
+                #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
+                elif parent.risk_check == False:
+                  
+                  parent.receive_method 
+                
+                if parent.risk_check == True:
+                  any_risk = True
+                else:
+                  if parent.address_known == True:
+                    any_to_notify = True
+                    already_included = False
+                    if parent_list_generator.number_gathered() > 0:                  
+                      for item in parent_list_generator:
+                        if parent.name.full(middle='full') == item.name.full(middle='full'):
+                          if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                              already_included = True                      
+                    if already_included == False:
+                      parent_list_generator.append(parent)
+              else:  
+                 notarized_signature
   parent_list_generator.there_is_another = False 
  
   #The following block generates a list of which children would need to be included in a publication notice. 
@@ -953,47 +1025,53 @@ code: |
     for child in children:
       child.safe_publish = True
       child.need_publish = False
-      if child.no_main_parent == False and child.main_other_parent.rights_terminated == False:
-        if child.main_other_parent.address_known == False and child.main_other_parent.agree != True and child.main_other_parent.risk_check != True:
-          child.need_publish = True
-        elif child.main_other_parent.agree != True and child.main_other_parent.risk_check == True:
-          child.safe_publish = False
-      if child.any_other_parents == True:
-        child_publish_parent_index = 0
-        while child_publish_parent_index < child.parents.number_gathered():
-          if child.parents[child_publish_parent_index].parent_type != "Parent" or child.parents[child_publish_parent_index].rights_terminated == False:
-            if child.parents[child_publish_parent_index].address_known == False and child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check != True:
-              child.need_publish = True
-            elif child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check == True:
-              child.safe_publish = False
-          child_publish_parent_index += 1
-      if child.safe_publish == True and child.need_publish == True:
-        published_children.append(child)
-        include_publication_notice = True
+      if not child.skip:
+        
+        if child.no_main_parent == False and child.main_other_parent.rights_terminated == False:
+          if child.main_other_parent.address_known == False and child.main_other_parent.agree != True and child.main_other_parent.risk_check != True:
+            child.need_publish = True
+          elif child.main_other_parent.agree != True and child.main_other_parent.risk_check == True:
+            child.safe_publish = False
+        if child.any_other_parents == True:
+          child_publish_parent_index = 0
+          while child_publish_parent_index < child.parents.number_gathered():
+            if child.parents[child_publish_parent_index].parent_type != "Parent" or child.parents[child_publish_parent_index].rights_terminated == False:
+              if child.parents[child_publish_parent_index].address_known == False and child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check != True:
+                child.need_publish = True
+              elif child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check == True:
+                child.safe_publish = False
+            child_publish_parent_index += 1
+        if child.safe_publish == True and child.need_publish == True:
+          published_children.append(child)
+          include_publication_notice = True
   published_children.there_is_another = False
   waiver_reason_logic = True
 ---
 reconsider: True
 code: |
+  any_under_six_months = False
   for child in children:
-    if child.no_main_parent == False:
-      child.include_parents_zero_on_child_sheet = False
-      if child.main_other_parent.rights_terminated == False:
-        child.include_main_parent_on_child_sheet = True
+    if not child.skip:
+      if child.age_in_years(decimals=True) < 0.5:
+        any_under_six_months = True
+      if child.no_main_parent == False:
+        child.include_parents_zero_on_child_sheet = False
+        if child.main_other_parent.rights_terminated == False:
+          child.include_main_parent_on_child_sheet = True
+        else:
+          child.include_main_parent_on_child_sheet = False
       else:
         child.include_main_parent_on_child_sheet = False
-    else:
-      child.include_main_parent_on_child_sheet = False
-      if child.any_other_parents == True:
-        if child.parents[0].parent_type == "Parent":
-          if child.parents[0].rights_terminated == False and child.other_parent_status != "deceased_parent":
-            child.include_parents_zero_on_child_sheet = True
+        if child.any_other_parents == True:
+          if child.parents[0].parent_type == "Parent":
+            if child.parents[0].rights_terminated == False and child.other_parent_status != "deceased_parent":
+              child.include_parents_zero_on_child_sheet = True
+            else:
+              child.include_parents_zero_on_child_sheet = False
           else:
             child.include_parents_zero_on_child_sheet = False
         else:
           child.include_parents_zero_on_child_sheet = False
-      else:
-        child.include_parents_zero_on_child_sheet = False
   parent_on_child_sheet_logic = True
 ---
 id: want to publish check
@@ -1300,34 +1378,49 @@ fields:
     datatype: yesnoradio
 ---
 id: your contact information
+generic object: ALIndividual
 question: |
   What is your contact information?
 subquestion: |
+  The court or other parties might need to contact you about this case.
+
+  **This information will appear on your court forms.**
+  
+  If you do not want to list a phone number on your forms, leave it blank.
+
+  If you have an email address, you must list it. Be sure to check your email daily, otherwise you may miss important information about your case.
+
   ${ collapse_template(contact_info_help) }  
 fields:  
-  - Phone number: users[0].phone_number
+  - Phone number: x.phone_number
     datatype: al_international_phone
     required: False
-  - Do you have an email address?: users[0].has_email_address      
+  - label: |
+      Do you have an email address?
+    field: x.has_email_address      
     datatype: yesnoradio
   - note: |
       This email address will appear on your court forms. Be sure to check 
       this email daily, otherwise you may miss important information about 
       your case.
-    show if: users[0].has_email_address      
-  - Email address: users[0].email    
+    show if: x.has_email_address      
+  - Email address: x.email    
     datatype: email
-    show if: users[0].has_email_address
-validation code: |
-  if (not showifdef('users[0].phone_number') and \
-      (users[0].has_email_address == False)):
-    validation_error(word("You need to provide at least one contact method."), field="users[0].other_contact_method")
+    show if: 
+      variable: x.has_email_address
+      is: True
 ---
 template: contact_info_help
 subject: |
-  **Why do I need to include this?**
+  **What if I don't want to list my email address?**
 content: |  
-  The court must be able to reach you, so you need to include some contact information.
+  If you do not want to enter your personal email address, you can create a new email account to get email about your case.
+  
+  To make a new email account try one of these email services:
+  
+  * [**Gmail**](https://accounts.google.com/SignUp)
+  * [**Outlook**](https://outlook.live.com/owa/?nlp=1&signup=1)
+  * [**Yahoo**](https://login.yahoo.com/account/create?.lang=en-US&.intl=us)
 ---
 id: filing county
 question: |
@@ -1456,6 +1549,33 @@ subquestion: |
   [FILE name_change_hearing_details.png, 100%, How to Attend Hearing section of Publication notice]
 
 ---
+id: signature
+question: |
+  Do you want to add your e-signature to your forms?
+subquestion: |
+  This program can put "**/s/ ${users[0].name.full(middle='full')}**" where you would sign your name. The court will accept this as your signature.
+  
+  If you do not add your **{e-signature}** now, you must sign your forms before you file them.
+  
+  <div class="alert alert-info ilao-info" role="alert">
+    <h6 class="alert-heading">What it means to sign your forms</h6>
+    <p>By signing your <i>Small Claims Complaint</i>, you are certifying that:
+  <p>
+  <p><ul>
+  <li>You read the document,</li>
+  <li>You believe it to be true and correct, and</li>
+  <li>You are not filing it for an improper purpose.</li>
+  </ul><p>
+  <p>See the <a href="https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm"><b>Code of Civil Procedure, 735 ILCS 5/1-109</b></a> for more information.</p>
+  </div>
+field: e_signature
+choices:
+  - Yes: True
+  - No, I will sign my forms later.: False
+terms:
+  - "e-signature": |
+      An e-signature is an electronic signature. It is a digital version of a signature that has the same effect as a hand-written signature.
+---
 id: forms assembling
 continue button field: forms_assembling
 question: |
@@ -1515,7 +1635,7 @@ objects:
   - publication_notice: ALDocument.using(title = "Publication notice of court date", filename="publication_notice.pdf", has_addendum=False)
   - order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
   - order: ALDocument.using(title = "Order for name change (minor name change)", filename="order.pdf", has_addendum=False)
-  - motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
+  #- motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 objects:
   - children[i].additional_parents_bundle: ALDocumentBundle.using(elements=[], filename="additional_parent.pdf", title = "Additional parents", enabled=True)
@@ -1523,15 +1643,36 @@ objects:
 reconsider: True
 code: |
   elements_for_children_bundle = []
+  elements_for_waive_bundle = []
   
   for index, child in enumerate(children):
     child.elements_for_additional_parents_bundle = []
-    for index, parent in enumerate(child.parents):
-      child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
-    child.additional_parents_bundle.elements = child.elements_for_additional_parents_bundle
-    elements_for_children_bundle.append(child.single_child_bundle)
+    if not child.skip:
+      for index, parent in enumerate(child.parents):
+        child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
+      child.additional_parents_bundle.elements = child.elements_for_additional_parents_bundle
+      elements_for_children_bundle.append(child.single_child_bundle)
+      if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
+        elements_for_waive_bundle.append(child.motion_to_waive_notice)
   organized_children_bundle.elements = elements_for_children_bundle
+  motion_to_waive_bundle.elements = elements_for_waive_bundle
   refresh_bundles = True
+---
+#This code block removes skipped children from the children list object. A for loop would not work well for this purpose, since each pop would change which child a given index refers to, so a clunky while loop with a integer variable is used.
+reconsider: True
+code: |
+  iteration_tracker = 0
+  included_children_count = 0
+  excluded_children_count = 0
+  while iteration_tracker < children.number_gathered():
+    if children[iteration_tracker].skip:
+      children.pop(iteration_tracker)
+      excluded_children_count += 1
+    else:
+      iteration_tracker += 1
+      included_children_count += 1
+  pop_skipped_children = True
+  
 ---
 objects:
   - children[i].single_child_bundle: ALDocumentBundle.using(elements=[children[i].child_information, children[i].additional_criminal_history, children[i].additional_parents_bundle], filename="single_child_information.pdf", title = "Child information", enabled=True)
@@ -1549,8 +1690,8 @@ objects:
   - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
 ---
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_date_bundle, order_to_waive_notice, change_order_bundle], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_notice, publication_notice, notice_of_date_bundle, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, order_to_waive_notice, change_order_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
@@ -1575,41 +1716,52 @@ code: |
       
       child.has_custodian = False
       child.has_guardian = False
-      child.child_information.enabled = True
+      
       child.additional_parents_bundle.enabled = False
       child.additional_criminal_history.enabled = False
       
-      if child.felonies or child.registry or child.id_theft:
-        if child.convictions.number() > 3:
-          child.additional_criminal_history.enabled = True
-  
-      # new logic test
-        
-      if child.any_other_parents == True:
-        type_check_index = 0
-        while type_check_index < child.parents.number_gathered():
-          if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
-            child.parents[type_check_index].parent_info_sheet.enabled = False
-          else:
-            child.parents[type_check_index].parent_info_sheet.enabled = True
-            child.additional_parents_bundle.enabled = True
-            if child.parents[type_check_index].parent_type == "Custodian":
-              child.has_custodian = True
-            else:
-              child.has_guardian = True
-          type_check_index += 1
-      else:
+      if child.skip:
+        child.child_information.enabled = False
         child.parents[0].parent_info_sheet.enabled = False
+      else:
+        child.child_information.enabled = True
       
+        if child.felonies or child.registry or child.id_theft:
+          if child.convictions.number() > 3:
+            child.additional_criminal_history.enabled = True
+    
+        # new logic test
+          
+        if child.any_other_parents == True:
+          type_check_index = 0
+          while type_check_index < child.parents.number_gathered():
+            if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
+              child.parents[type_check_index].parent_info_sheet.enabled = False
+            else:
+              child.parents[type_check_index].parent_info_sheet.enabled = True
+              child.additional_parents_bundle.enabled = True
+              if child.parents[type_check_index].parent_type == "Custodian":
+                child.has_custodian = True
+              else:
+                child.has_guardian = True
+            type_check_index += 1
+        else:
+          child.parents[0].parent_info_sheet.enabled = False
         
-  motion_to_waive_notice.enabled = False
+        
+  #motion_to_waive_notice.enabled = False
   order_to_waive_notice.enabled = False
   publication_notice.enabled = False
   
-  
+  for child in children:
+    child.motion_to_waive_notice.enabled = False
   
   if any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
-    motion_to_waive_notice.enabled = True
+    for child in children:
+      if not child.skip:
+        if child.other_parent_status == "has_other_parent" or child.any_other_parents:
+          if child.main_other_parent.risk_check or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
+            child.motion_to_waive_notice.enabled = True
     order_to_waive_notice.enabled = True
   if include_publication_notice == True and showifdef('request_waiver') != True:
     publication_notice.enabled = True
@@ -1663,7 +1815,7 @@ attachment:
     - "child_info_attached": ${True}
     #- "illinois_start_date": ${format_date(started_living_in_illinois, format='long')}
     - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
-    - "six_months": ${True}
+    - "six_months": ${False if any_under_six_months else True}
     - "user_address": ${users[0].address.on_one_line(bare=True)}
     - "user_phone": ${phone_number_formatted(users[0].phone_number)}
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
@@ -1736,7 +1888,7 @@ attachment:
     - "user": ${ users[0].name.full(middle="full") }
 ---    
 attachment:
-  variable name: motion_to_waive_notice[i]
+  variable name: children[i].motion_to_waive_notice[j]
   name: motion_to_waive_notice
   filename: motion_to_waive_notice
   skip undefined: True
@@ -1877,6 +2029,7 @@ objects:
   - children[i].child_information: ALDocument.using(title="Child information", filename="child_information.pdf", has_addendum=False)
   - children[i].parents[j].parent_info_sheet: ALDocument.using(title="Parent information", filename="additional_parent.pdf", has_addendum=False)
   - children[i].additional_criminal_history: ALDocument.using(title="Additional Criminal History", filename="child_name_change_additional_criminal_history.pdf", has_addendum=False)  
+  - children[i].motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 generic object: ALIndividual
 objects:
@@ -1905,6 +2058,9 @@ code: |
 ---
 objects:
   - notice_of_date_bundle: ALDocumentBundle.using(elements=[], title= "Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False, enabled=True)
+---
+objects:
+  - motion_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Motion to waive notice", filename="motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
 ---
 attachment:
   variable name: children[i].child_information[j]
@@ -2188,68 +2344,6 @@ attachment:
         No
         % endif
         % endif
-    - "user_offense_name_13": ${ children[i].convictions[12].name.text }
-    - "user_conviction_date_13": ${ format_date(children[i].convictions[12].date, format='MM/dd/yyyy') }
-    - "user_sentence_13": ${ children[i].convictions[12].sentence }
-    - "user_sentence_completed_date_13": ${ format_date(children[i].convictions[12].completed_date, format='MM/dd/yyyy') }
-    - "user_pardoned_13": |
-        % if children[i].convictions[12].name.text != "":
-        % if children[i].convictions[12].pardoned == True:
-        Yes
-        % else:
-        No
-        % endif
-        % endif
-    - "user_offense_name_14": ${ children[i].convictions[13].name.text }
-    - "user_conviction_date_14": ${ format_date(children[i].convictions[13].date, format='MM/dd/yyyy') }
-    - "user_sentence_14": ${ children[i].convictions[13].sentence }
-    - "user_sentence_completed_date_14": ${ format_date(children[i].convictions[13].completed_date, format='MM/dd/yyyy') }
-    - "user_pardoned_14": |
-        % if children[i].convictions[13].name.text != "":
-        % if children[i].convictions[13].pardoned == True:
-        Yes
-        % else:
-        No
-        % endif
-        % endif
-    - "user_offense_name_15": ${ children[i].convictions[14].name.text }
-    - "user_conviction_date_15": ${ format_date(children[i].convictions[14].date, format='MM/dd/yyyy') }
-    - "user_sentence_15": ${ children[i].convictions[14].sentence }
-    - "user_sentence_completed_date_15": ${ format_date(children[i].convictions[14].completed_date, format='MM/dd/yyyy') }
-    - "user_pardoned_15": |
-        % if children[i].convictions[14].name.text != "":
-        % if children[i].convictions[14].pardoned == True:
-        Yes
-        % else:
-        No
-        % endif
-        % endif
-    - "user_offense_name_16": ${ children[i].convictions[15].name.text }
-    - "user_conviction_date_16": ${ format_date(children[i].convictions[15].date, format='MM/dd/yyyy') }
-    - "user_sentence_16": ${ children[i].convictions[15].sentence }
-    - "user_sentence_completed_date_16": ${ format_date(children[i].convictions[15].completed_date, format='MM/dd/yyyy') }
-    - "user_pardoned_16": |
-        % if children[i].convictions[15].name.text != "":
-        % if children[i].convictions[15].pardoned == True:
-        Yes
-        % else:
-        No
-        % endif
-        % endif
-    - "user_offense_name_17": ${ children[i].convictions[16].name.text }
-    - "user_conviction_date_17": ${ format_date(children[i].convictions[16].date, format='MM/dd/yyyy') }
-    - "user_sentence_17": ${ children[i].convictions[16].sentence }
-    - "user_sentence_completed_date_17": ${ format_date(children[i].convictions[16].completed_date, format='MM/dd/yyyy') }
-    - "user_pardoned_17": |
-        % if children[i].convictions[16].name.text != "":
-        % if children[i].convictions[16].pardoned == True:
-        Yes
-        % else:
-        No
-        % endif
-        % endif
-
-
 ---
 attachment:
   variable name: children[i].parents[j].parent_info_sheet[k]
@@ -2582,7 +2676,8 @@ fields:
 validation code: |
   if x[i].convictions[j].completed_date < x[i].convictions[j].date:
     validation_error("Date sentence completed must be on or after date of conviction or probation. Please adjust your answers.", field="x[i].convictions[j].completed_date")
-
+  if j > 10:
+    x[i].convictions.there_is_another = False
 ---
 id: any other convictions
 generic object: ALPeopleList
@@ -2610,9 +2705,9 @@ subquestion: |
   % endif
   
   % if x[i].convictions.number() == 1:
-  You can enter up to 17 convictions or probations in total. So far you have told us about ${ x[i].convictions.number() } offense:
+  You can enter up to 12 convictions or probations in total. So far you have told us about ${ x[i].convictions.number() } offense:
   % else:
-  You can enter up to 17 convictions or probations in total. So far you have told us about ${ x[i].convictions.number() } offenses:
+  You can enter up to 12 convictions or probations in total. So far you have told us about ${ x[i].convictions.number() } offenses:
   % endif
   
   % for conviction in x[i].convictions:
@@ -2950,6 +3045,10 @@ review:
     button: |
       **Birth date:**
       ${x.birthdate}
+  - Edit: x.six_months_in_illinois
+    button: |
+      **Has ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) lived in Illinois for at least 6 months?**
+      ${word(yesno(x.six_months_in_illinois))}
   - Edit: x.user_relationship
     button: |
       **Your relationship to ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}):**
@@ -2964,6 +3063,11 @@ review:
       % elif x.user_relationship == "other":
       Other
       % endif
+  - Edit: x.no_parental_rights
+    button: |
+      **Were your parental rights over ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) terminated?**
+      ${word(yesno(x.no_parental_rights))}
+    show if: x.user_relationship == "bio" or x.user_relationship == "adopt"
   - Edit: x.change_reasons
     button: |
       **Why are you changing this child's name from "${x.name.full(middle='full')}" to "${x.new.name.full(middle='full')}?"**
@@ -3056,6 +3160,13 @@ review:
     button: |
       **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any convictions or were they placed on probation for identity theft?**
       ${word(yesno(x.id_theft))}
+  - Edit: x.convictions.revisit
+    button: |
+      **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s convictions: (Edit to change details)**
+
+      % for my_var in x.convictions:
+        * ${ my_var.name.text } on ${ my_var.date }
+      % endfor
   - note: |
       #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s other parent
   #- Edit: x.no_main_parent
@@ -3143,6 +3254,51 @@ review:
         * ${ my_var.name.full(middle="full")}
       % endfor
     show if: x.any_other_parents
+---
+id: convictions revisit
+continue button field: children[i].convictions.revisit
+question: |
+  Edit the convictions
+subquestion: |
+  ${ children[i].convictions.table }
+
+  % if children[i].convictions.number_gathered() < 12:
+  ${ children[i].convictions.add_action() }
+  % endif
+---
+table: children[i].convictions.table
+rows: children[i].convictions
+columns:
+  - Offense description: |
+      row_item.name.text if defined("row_item.name.text") else ""
+  - Details (including dates, sentences, and pardons): |
+      action_button_html(url_action(row_item.attr_name("review_convictions_details")), label="Edit", icon="pencil-alt")
+delete buttons: True
+confirm: True
+---
+id: edit convictions
+continue button field: x.review_convictions_details
+generic object: DAObject
+question: |
+  Edit conviction details
+review: 
+  - Edit: x.name.text
+    button: |
+      **Offense description:**
+      ${ x.name.text  }
+  - Edit: x.date
+    button: |
+      **Date of conviction or probation:**
+      ${ x.date } 
+  - Edit: x.sentence
+    button: |
+      **Sentence received:**
+      ${ x.sentence }
+  - Edit: x.pardoned
+    button: |
+      **Pardoned?**
+      ${ word(yesno(x.pardoned)) }
+continue button label: Next
 ---
 id: parent review
 continue button field: x.review_parent
