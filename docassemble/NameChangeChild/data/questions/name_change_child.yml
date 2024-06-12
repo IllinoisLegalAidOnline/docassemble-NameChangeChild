@@ -50,6 +50,7 @@ code: |
   interview_type = "child"
   nav.set_section('section_intro')
   sees_nav_bar
+  snapshot_start
   how_to_use
   set_progress(5)
   whats_next
@@ -145,6 +146,7 @@ code: |
   if any_to_notify:
     refresh_notice_bundle
   forms_assembling
+  snapshot_forms
   get_docs_screen
 ---
 code: |
@@ -165,6 +167,14 @@ code: |
   	data=stuff_to_snapshot, persistent=True
   	)
   snapshot_interview_state = True
+---
+code: |
+  snapshot_interview_state
+  snapshot_start = True  
+---
+code: |
+  reconsider('snapshot_interview_state')
+  snapshot_forms = True
 ---
 #Gather loop for children list
 code: |
@@ -232,7 +242,7 @@ code: |
 ---
 #gather parent gather list
 code: |
-  if not children[i].skip:
+  if showifdef('children[i].skip') == "" or not children[i].skip:
     if children[i].any_other_parents == True:
       children[i].parents[j].name.first
       if children[i].parents[j].parent_type == "Parent":
@@ -885,6 +895,8 @@ content: |
   
   If you do not know a parent or guardian's address, you can notify them by newspaper. This program can make a *Publication Notice of Court Date* form.
 ---
+sets:
+  - children[i].skip
 reconsider: True
 code: |
   for child in children:
@@ -1760,7 +1772,7 @@ code: |
     for child in children:
       if not child.skip:
         if child.other_parent_status == "has_other_parent" or child.any_other_parents:
-          if child.main_other_parent.risk_check or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
+          if showifdef('child.main_other_parent.risk_check') == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
             child.motion_to_waive_notice.enabled = True
     order_to_waive_notice.enabled = True
   if include_publication_notice == True and showifdef('request_waiver') != True:
