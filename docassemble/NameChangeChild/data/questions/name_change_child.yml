@@ -462,7 +462,7 @@ id: child birth date
 question: |
   When was ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) born?
 subquestion: |
-  This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult easy form**](https://www.illinoislegalaid.org/node/36321).
+  This program can only change the name of a child under the age of 18. To make name change forms for an adult, use ILAO's [**Name change for an adult Easy Form**](https://www.illinoislegalaid.org/node/36321).
 fields:
   - Birth date: children[i].birthdate
     datatype: ThreePartsDate
@@ -581,6 +581,8 @@ fields:
       - Other: other
   - Other reasons: children[i].other_reason
     input type: area
+    rows: 6
+    maxlength: 250
     show if: children[i].change_reasons['other']
 ---
 id: child new name
@@ -641,7 +643,7 @@ question: |
 subquestion: |
   If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has another known biological parent or parent listed on the birth certificate other than you, you should click **Yes** unless they have died.
   
-  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) only has guardians or custodians, you should click **No**. The program will ask about guardians and custodians later in this interview.
+  If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) only has guardians or custodians, you should click **No**. The program will ask about guardians and custodians later.
 field: children[i].other_parent_status
 choices:
   - Yes: has_other_parent
@@ -659,7 +661,7 @@ continue button field: children[i].deceased_info
 question: |
   About ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s deceased parent
 subquestion: |
-  You may need to prove to the court that ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent has passed away. You may want to attach a copy of their death certificate to the name change petition.
+  You may need to prove to the court that ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent has passed away. Be prepared to present a copy of their death certificate to the judge.
 ---
 id: main other parent
 question: |
@@ -1330,12 +1332,13 @@ subquestion: |
 fields:
   - Notice and publication would be a hardship because:: hardship_text
     input type: area
+    rows: 12
+    maxlength: 500
 ---
 template: notice_waiver_example
 subject: |
   **What should my answer look like?**
 content: |  
-  % if interview_type == "child":
   % if children.number_gathered() == 1:
   This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
   % else:
@@ -1344,12 +1347,9 @@ content: |
 
   Here are some examples: 
   
-  "I need to change ${children[0].name.full(middle='full')}'s name to ${children[0].new.name.full(middle='full')} because we are trying to get away from my ex-boyfriend. He has abused ${children[0].name.full(middle='full')} in the past. I am afraid he will hurt ${children[0].name.full(middle='full')} if he learns about this name change request."
+  "I need to change my child's name to 'New Name' because we are trying to get away from my ex-boyfriend. He has abused my child in the past. I am afraid he will hurt my child if he learns about this name change request."
   
-  "${children[0].name.full(middle='full')} wants to change their name to ${children[0].new.name.full(middle='full')} as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
-  % else:
-  ADULT NAME CHANGE TEXT
-  % endif
+  "My child wants to change their name to 'New Name' as part of a gender transition. I am afraid publishing notice of this change in the newspaper could lead to my child and I experiencing discrimination or targeted harassment."
 ---
 generic object: ALIndividual
 id: other parent notice method
@@ -1618,7 +1618,7 @@ subquestion: |
 
   ${ al_user_bundle.send_button_html(show_editable_checkbox=False) }
   
-  **Note:** This program **does not** file your forms. You will need to do this yourself.
+  **Note:** This program **does not** file your forms. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
 
   Thank you for using ILAO Easy Forms!
 under: |
@@ -1904,7 +1904,7 @@ attachment:
   name: motion_to_waive_notice
   filename: motion_to_waive_notice
   skip undefined: True
-  editable: False
+  editable: True
   pdf template file: motion_to_waive_notice.pdf
   fields:      
     - "trial_court_county": ${ trial_court.address.county.upper() }
@@ -1946,7 +1946,7 @@ attachment:
   name: notice_of_court_date
   filename: notice_of_court_date
   skip undefined: True
-  editable: False
+  editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
     - "filing_county": ${filing_county}
@@ -2112,19 +2112,19 @@ attachment:
     - "child_identity_true": ${ True if children[i].id_theft == True else False}
     - "child_identity_false": ${ True if children[i].id_theft == False else False}
     - "conviction_description_1": ${children[i].convictions[0].name.text}
-    - "conviction_date_1": ${ children[i].convictions[0].date}
+    - "conviction_date_1": ${ format_date(children[i].convictions[0].date, format='MM/dd/yyyy') }
     - "sentence_1": ${  children[i].convictions[0].sentence}
-    - "completion_date_1": ${ children[i].convictions[0].completed_date}
+    - "completion_date_1": ${ format_date(children[i].convictions[0].completed_date, format='MM/dd/yyyy') }
     - "pardoned_1": ${children[i].convictions[0].pardoned}
     - "conviction_description_2": ${children[i].convictions[1].name.text}
-    - "conviction_date_2": ${ children[i].convictions[1].date}
+    - "conviction_date_2": ${ format_date(children[i].convictions[1].date, format='MM/dd/yyyy') }
     - "sentence_2": ${  children[i].convictions[1].sentence}
-    - "completion_date_2": ${ children[i].convictions[1].completed_date}
+    - "completion_date_2": ${ format_date(children[i].convictions[1].completed_date, format='MM/dd/yyyy') }
     - "pardoned_2": ${children[i].convictions[1].pardoned}
     - "conviction_description_3": ${children[i].convictions[2].name.text}
-    - "conviction_date_3": ${ children[i].convictions[2].date}
+    - "conviction_date_3": ${ format_date(children[i].convictions[2].date, format='MM/dd/yyyy') }
     - "sentence_3": ${  children[i].convictions[2].sentence}
-    - "completion_date_3": ${ children[i].convictions[2].completed_date}
+    - "completion_date_3": ${ format_date(children[i].convictions[2].completed_date, format='MM/dd/yyyy') }
     - "pardoned_3": ${children[i].convictions[2].pardoned}
     - "user_wishes": ${True if children[i].change_reasons["user_wants"] == True else False}
     - "child_wishes": ${True if children[i].change_reasons["child_wants"] == True else False}
@@ -2662,7 +2662,9 @@ subquestion: |
   % endif
 fields:
   - Offense description: x[i].convictions[j].name.text
-    maxlength: 30
+    input type: area
+    rows: 2
+    maxlength: 75
   - Date of conviction or probation: x[i].convictions[j].date
     datatype: date
     max: ${ today().format("yyyy-MM-dd") }
@@ -2673,7 +2675,9 @@ fields:
       ${x[i].birthdate}
       % endif
   - Sentence received: x[i].convictions[j].sentence
-    maxlength: 30
+    input type: area
+    rows: 2
+    maxlength: 75
   - Date sentence completed: x[i].convictions[j].completed_date
     datatype: date
     max: ${ today().format("yyyy-MM-dd") }
