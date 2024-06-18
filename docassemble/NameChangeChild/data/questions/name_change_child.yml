@@ -24,7 +24,7 @@ objects:
   - published_children: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
   - children[i].convictions: DAList.using(object_type=Thing, there_are_any=True)
   - court_list: ALCourtLoader.using(file_name='docassemble.ILAO:data/sources/il_courts.xlsx')
-  - orders: DAList.using(object_type=Thing, complete_attribute='complete', there_are_any=True)
+  - children[i].orders: DAList.using(object_type=Thing, complete_attribute='complete', there_are_any=True)
   - debug_list: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
   - included_children: ALPeopleList.using(there_are_any=True, object_Type=ALIndividual, there_is_another=False)
 ---
@@ -111,18 +111,19 @@ code: |
                   published_notice_info
 
           interview_parent_index += 1
+      #child.waiver_code_block    
   waiver_reason_logic
   set_progress(60)
 
   #If any parent who needs to be notified poses a risk or if notice by publication would be required but could cause the child a hardship, the questions around motion to waive notice/publication should be asked.
-  if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
-    note_about_waiver
-    if waiver_reason['order'] == True:
-      if protective_order.any_true():
-        order_against_parents
-        orders.gather()
-    #Following if statement is commented out as the hardship field on the form is available to anyone requesting a waiver.
-    hardship_text
+  #if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
+  #  note_about_waiver
+  #  if waiver_reason['order'] == True:
+  #    if protective_order.any_true():
+  #      order_against_parents
+  #      orders.gather()
+  #  #Following if statement is commented out as the hardship field on the form is available to anyone requesting a waiver.
+  #  hardship_text
     
   nav.set_section('section_filing')
   set_progress(80)
@@ -134,10 +135,10 @@ code: |
   e_signature
     
   if any_to_notify == True or (child_notice_would_be_published == True and any_risk == False):
-    if any_to_notify == True or request_waiver == False:
+    if any_to_notify == True or any_pubish_waiver_requested == False:
       complete_notice
   elif child_notice_would_be_published and not any_risk:
-    if not request_waiver:
+    if not any_pubish_waiver_requested:
       complete_notice
   if any_to_notify == True:
     notice_reminder
@@ -965,9 +966,12 @@ code: |
   child_notice_would_be_published = False
   any_risk = False
   any_to_notify = False
- 
+  any_pubish_waiver_requested = False
   #In addition to setting the above flags to True if necessary, this for loop also generates the parent_list_generator object.
   for child in children:
+    child.child_notice_would_be_published = False
+    child.any_risk = False
+    child.any_to_notify = False
     if not child.skip:
     
     #The code for the main_other_parent object should match the code in the for loop for the parents list.  
@@ -979,6 +983,7 @@ code: |
             #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
             notice_waiver_info  
             if child.main_other_parent.address_known == False:
+              child.child_notice_would_be_published = True
               child_notice_would_be_published = True
             #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
             elif child.main_other_parent.risk_check == False:
@@ -987,10 +992,12 @@ code: |
             
             if child.main_other_parent.risk_check == True:
               any_risk = True
+              child.any_risk = True
             else:
               if child.main_other_parent.address_known == True:
                 child.main_other_parent.address.address
                 any_to_notify = True
+                child.any_to_notify = True
                 already_included = False
                 if parent_list_generator.number_gathered() > 0:                  
                   for item in parent_list_generator:
@@ -1014,6 +1021,7 @@ code: |
                 notice_waiver_info  
                 if parent.address_known == False:
                   child_notice_would_be_published = True
+                  child.child_notice_would_be_published = True
                 #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
                 elif parent.risk_check == False:
                   
@@ -1021,6 +1029,7 @@ code: |
                 
                 if parent.risk_check == True:
                   any_risk = True
+                  child.any_risk = True
                 else:
                   if parent.address_known == True:
                     any_to_notify = True
@@ -1034,7 +1043,13 @@ code: |
                       parent_list_generator.append(parent)
               else:  
                  notarized_signature
-  parent_list_generator.there_is_another = False 
+    if child.any_risk or (child.child_notice_would_be_published == True and child.request_waiver == True):
+      child.note_about_waiver
+      if child.waiver_reason['order'] == True:
+        if child.protective_order.any_true():
+          child.order_against_parents
+          child.orders.gather()             
+    parent_list_generator.there_is_another = False 
  
   #The following block generates a list of which children would need to be included in a publication notice. 
   published_children.clear()
@@ -1063,6 +1078,7 @@ code: |
         if child.safe_publish == True and child.need_publish == True:
           published_children.append(child)
           include_publication_notice = True
+          any_pubish_waiver_requested = True
   published_children.there_is_another = False
   waiver_reason_logic = True
 ---
@@ -1099,25 +1115,17 @@ code: |
     if child.any_other_parents:
       for parent in child.parents:
         parent.publication_needer = False
-        if parent.address_known == False and parent.agree != True and parent.risk_check != True and request_waiver != True:
+        if parent.address_known == False and parent.agree != True and parent.risk_check != True and child.request_waiver != True:
           parent.publication_needer = True
   template_variable_logic = True
 ---
 id: want to publish check
 question: |
-  % if children.number_gathered() == 1:
-  Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')})'s name change would put them at risk of harm or discrimination?
-  % else:
-  Are you concerned publishing notice of these name changes would put your children at risk of harm or discrimination?
-  % endif
+  Are you concerned publishing notice of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change would put them at risk of harm or discrimination?
 subquestion: |
   Since you do not know the address of all parents, guardians, or custodians you would need to notify of this name change, you may have to publish notice in a local newspaper. However, you can file a motion requesting you not be required to publish notice.
   
-  % if children.number_gathered() == 1:
-  You can ask the judge to skip publication of the name change if it would be a hardship on your children. A hardship could include harm to health or safety.
-  % else:
-  You can ask the judge to skip publication of the name change if it would be a hardship on your child. A hardship could include harm to health or safety.
-  % endif
+  You can ask the judge to skip publication of the name change if it would be a hardship for your child.
   
   You can also ask the judge to skip publication if you have or did have a protective court order. This could be:
   
@@ -1128,34 +1136,22 @@ subquestion: |
   * Protection under someone else's bail conditions, or
   * A similar protective order outside Illinois.
 fields:
-  - no label: request_waiver
+  - no label: children[i].request_waiver
     datatype: yesnoradio
 ---
 id: note about waiver
-continue button field: note_about_waiver
+continue button field: children[i].note_about_waiver
 question: |
   About waiving notice
 subquestion: |
-  % if children.number_gathered() == 1:
-  % if child_notice_would_be_published == True:
-  % if any_risk == False:
+  % if children[i].child_notice_would_be_published == True:
+  % if children[i].any_risk == False:
   Based on your answers, you are concerned that publishing notice of your child's name change request could put them at risk.
   % else:
   Based on your answers, you are concerned that publishing notice of your child's name change request and notifying at least one of their parents, guardians, and custodians could put them at risk.
   % endif
   % else:
   Based on your answers, you are concerned that notifying at least one of your child's parents, guardians, and custodians of their name change request could put them at risk.
-  % endif
-  % else:
-  % if child_notice_would_be_published == True:
-  % if any_risk == False:
-  Based on your answers, you are concerned that publishing notice of your children's name change requests could put them at risk.
-  % else:
-  Based on your answers, you are concerned that publishing notice of your children's name change requests and notifying at least one of their parents, guardians, and custodians could put them at risk.
-  % endif
-  % else:
-  Based on your answers, you are concerned that notifying at least one of your children's parents, guardians, and custodians of their name change requests could put them at risk.
-  % endif
   % endif
   
   This program can make a *Motion to Waive Notice and Publication* for you, but the judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
@@ -1164,17 +1160,10 @@ subquestion: |
 ---
 id: waiver reasons
 question: |
-  Why do you need a notice waiver?
+  Why do you need a notice waiver for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})?
 subquestion: |
-  % if interview_type == 'adult':
-  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the person whose name would be changed.
-  % else:
-  % if children.number_gathered() == 1:
-  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the child whose name would be changed.
-  % else:
-  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for the children whose name would be changed.
-  % endif
-  % endif
+  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}.
+  
   A protective court order can include:
   
   * An Order of Protection,
@@ -1192,7 +1181,7 @@ subquestion: |
   * Bullying, or
   * Threats of violence.
 fields:
-  - no label: waiver_reason
+  - no label: children[i].waiver_reason
     datatype: checkboxes
     minlength: 1
     choices:
@@ -1210,7 +1199,7 @@ subquestion: |
 
   If you do not have or did not have any of these kinds of orders, you can click **Back** and change your answer.
 fields:
-  - I have or did have protection from: protective_order
+  - I have or did have protection from: children[i].protective_order
     datatype: checkboxes
     minlength: 1
     none of the above: False
@@ -1224,75 +1213,66 @@ fields:
     validation messages:
       minlength: |
         Please select at least one or click < Back if none apply.
-  - In which state was the protective order? (not Illinois): other_order_state
+  - In which state was the protective order? (not Illinois): children[i].other_order_state
     maxlength: 25
     show if:
-      variable: protective_order['other_order']
+      variable: children[i].protective_order['other_order']
       is: True
 ---
 # add question if protective order is against one of the other parents
 id: order against parents
 question: |
-  % if children.number_gathered() == 1:
-  Is the protective order against one of the parents of your child?
-  % else:
-  Is the protective order against one of the parents of your children?
-  % endif
+  Is the protective order against one of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s parents?
 subquestion: |
-  % if children.number_gathered() == 1:
-  Click **Yes** if the abuser in the protective order is the parent of the child asking for a name change.
-  % else:
-  Click **Yes** if the abuser in the protective order is the parent of any of the children asking for a name change.
-  % endif
+  Click **Yes** if the abuser in the protective order is the parent, guardian, or custodian of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}).
 fields:
-  - no label: order_against_parents
+  - no label: children[i].order_against_parents
     datatype: yesnoradio
 ---
 code: |
-  orders[i].name.text
-  if orders.number_gathered() >= 4:
-    orders.there_is_another = False
-  orders[i].complete = True
+  children[i].orders[j].name.text
+  if children[i].orders.number_gathered() >= 4:
+    children[i].orders.there_is_another = False
+  children[i].orders[j].complete = True
 ---
-
 id: protective order details
 question: |
-  % if i == 0:
+  % if j == 0:
   Protective order case details
   % else:
-  ${ordinal(i)} protective order case details
+  ${capitalize(ordinal(j))} protective order case details
   % endif
 subquestion: |
   For your *Motion to Waive Notice and Publication*, enter more information about protective orders.
   
   You said you have or did have: 
   
-  % if protective_order['op']:
+  % if children[i].protective_order['op']:
    * An Order of Protection
   % endif
-  % if protective_order['snco']:
+  % if children[i].protective_order['snco']:
    * A Stalking No Contact Order
   % endif
-  % if protective_order['cnco']:
+  % if children[i].protective_order['cnco']:
    * A Civil No Contact Order
   % endif
-  % if protective_order['other_criminal']:
+  % if children[i].protective_order['other_criminal']:
    * A Protective order in someone else's criminal case
   % endif
-  % if protective_order['bail']:
+  % if children[i].protective_order['bail']:
    * Being a protected person under someone else's bail conditions
   % endif
-  % if protective_order['other_order']:
+  % if children[i].protective_order['other_order']:
    * A similar protective order outside Illinois
   % endif
   
   Enter information about one case at a time. You can enter other cases on another screen.
 fields:
-  - Case number: orders[i].number
+  - Case number: children[i].orders[j].number
     maxlength: 30
-  - County: orders[i].name.text
+  - County: children[i].orders[j].name.text
     maxlength: 30
-  - State: orders[i].state
+  - State: children[i].orders[j].state
     code: |
       states_list()
     default: IL      
@@ -1303,49 +1283,45 @@ question: |
 subquestion: |
   To waive notice and publication in the name change request, you must add details about the following cases:
   
-  % if protective_order['op']:
+  % if children[i].protective_order['op']:
    * An Order of Protection
   % endif
-  % if protective_order['snco']:
+  % if children[i].protective_order['snco']:
    * A Stalking No Contact Order
   % endif
-  % if protective_order['cnco']:
+  % if children[i].protective_order['cnco']:
    * A Civil No Contact Order
   % endif
-  % if protective_order['other_criminal']:
+  % if children[i].protective_order['other_criminal']:
    * A Protective order in someone else's criminal case
   % endif
-  % if protective_order['bail']:
+  % if children[i].protective_order['bail']:
    * Being a protected person under someone else's bail conditions
   % endif
-  % if protective_order['other_order']:
+  % if children[i].protective_order['other_order']:
    * A similar protective order outside Illinois
   % endif
   
   You can enter up to 4 cases. So far you have told us about:
   
-  % for order in orders:
+  % for order in children[i].orders:
    * Case number: ${order.number} in ${order.name.text}, ${order.state}
   % endfor
 fields:
-  - "Add another case?": orders.there_is_another
+  - "Add another case?": children[i].orders.there_is_another
     datatype: yesnoradio
 ---
 id: hardship reason
 question: |
-  % if interview_type == "child":
-  % if child_notice_would_be_published == True:
+  % if children[i].child_notice_would_be_published == True:
   Explain why publication and giving notice would be a hardship
   % else:
   Explain why giving notice would be a hardship
   % endif
-  % else:
-  ADULT NAME CHANGE TEXT
-  % endif
 subquestion: |
   ${collapse_template(notice_waiver_example)}
 fields:
-  - Notice and publication would be a hardship because:: hardship_text
+  - Notice and publication would be a hardship because:: children[i].hardship_text
     input type: area
     rows: 12
     maxlength: 500
@@ -1354,11 +1330,7 @@ template: notice_waiver_example
 subject: |
   **What should my answer look like?**
 content: |  
-  % if children.number_gathered() == 1:
-  This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')}) at risk of physical harm or discrimination.
-  % else:
-  This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put your children at risk of physcial harm or discrimination.
-  % endif
+  This explanation will go on your *Motion to Waive Notice and Publication*. You should explain why giving or publishing notice would put ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) at risk of physical harm or discrimination.
 
   Here are some examples: 
   
@@ -1679,7 +1651,7 @@ code: |
         child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
       child.additional_parents_bundle.elements = child.elements_for_additional_parents_bundle
       elements_for_children_bundle.append(child.single_child_bundle)
-      if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
+      if child.any_risk == True or (child.child_notice_would_be_published == True and child.request_waiver == True):
         elements_for_waive_bundle.append(child.motion_to_waive_notice)
   organized_children_bundle.elements = elements_for_children_bundle
   motion_to_waive_bundle.elements = elements_for_waive_bundle
@@ -1783,15 +1755,16 @@ code: |
   for child in children:
     child.motion_to_waive_notice.enabled = False
   
-  if any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
+  if any_risk == True or (child_notice_would_be_published == True and showifdef('any_pubish_waiver_requested') == True):
     for child in children:
       if not child.skip:
         if child.other_parent_status == "has_other_parent" or child.any_other_parents:
-          if showifdef('child.main_other_parent.risk_check') == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True):
+          if showifdef('child.main_other_parent.risk_check') == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
             child.motion_to_waive_notice.enabled = True
     order_to_waive_notice.enabled = True
-  if include_publication_notice == True and showifdef('request_waiver') != True:
-    publication_notice.enabled = True
+  for child in children:
+    if include_publication_notice == True and showifdef('child.request_waiver') != True:
+      publication_notice.enabled = True
 ---
 attachment:
   variable name: instructions[i]
@@ -1919,34 +1892,34 @@ attachment:
   name: motion_to_waive_notice
   filename: motion_to_waive_notice
   skip undefined: True
-  editable: True
+  editable: False
   pdf template file: motion_to_waive_notice.pdf
   fields:      
     - "trial_court_county": ${ trial_court.address.county.upper() }
     - "user__1": ${ users[0].name.full(middle="full") }
-    - "waiver_order_cb": ${ True if waiver_reason['order'] == True else '' }
-    - "protective_order_op": ${ True if protective_order['op'] == True else '' }
-    - "protective_order_snco": ${ True if protective_order['snco'] == True else '' }
-    - "protective_order_cnco": ${ True if protective_order['cnco'] == True else '' }
-    - "protective_order_criminal": ${ True if protective_order['other_criminal'] == True else '' }
-    - "protective_order_bail": ${ True if protective_order['bail'] == True else '' }
-    - "protective_order_other": ${ True if protective_order['other_order'] == True else '' }
-    - "protective_order_other_state": ${ other_order_state if protective_order['other_order'] else '' }
-    - "protective_order_minor_parent": ${ order_against_parents }
-    - "waiver_hardship_cb": ${ True if waiver_reason['hardship'] == True else '' }
-    - "hardship_text": ${ hardship_text }
-    - "order_county_1": ${ orders[0].name.text if waiver_reason['order'] == True else '' }
-    - "order_state_1": ${ orders[0].state if waiver_reason['order'] == True else '' }
-    - "order_case_number_1": ${ orders[0].number if waiver_reason['order'] == True else '' }
-    - "order_county_2": ${ orders[1].name.text if waiver_reason['order'] == True else '' }
-    - "order_state_2": ${ orders[1].state if waiver_reason['order'] == True else '' }
-    - "order_case_number_2": ${ orders[1].number if waiver_reason['order'] == True else '' }
-    - "order_county_3": ${ orders[2].name.text if waiver_reason['order'] == True else '' }
-    - "order_state_3": ${ orders[2].state if waiver_reason['order'] == True else '' }
-    - "order_case_number_3": ${ orders[2].number if waiver_reason['order'] == True else '' }
-    - "order_county_4": ${ orders[3].name.text if waiver_reason['order'] == True else '' }
-    - "order_state_4": ${ orders[3].state if waiver_reason['order'] == True else '' }
-    - "order_case_number_4": ${ orders[3].number if waiver_reason['order'] == True else '' }
+    - "waiver_order_cb": ${ True if children[i].waiver_reason['order'] == True else '' }
+    - "protective_order_op": ${ True if children[i].protective_order['op'] == True else '' }
+    - "protective_order_snco": ${ True if children[i].protective_order['snco'] == True else '' }
+    - "protective_order_cnco": ${ True if children[i].protective_order['cnco'] == True else '' }
+    - "protective_order_criminal": ${ True if children[i].protective_order['other_criminal'] == True else '' }
+    - "protective_order_bail": ${ True if children[i].protective_order['bail'] == True else '' }
+    - "protective_order_other": ${ True if children[i].protective_order['other_order'] == True else '' }
+    - "protective_order_other_state": ${ children[i].other_order_state if children[i].protective_order['other_order'] else '' }
+    - "protective_order_minor_parent": ${ children[i].order_against_parents }
+    - "waiver_hardship_cb": ${ True if children[i].waiver_reason['hardship'] == True else '' }
+    - "hardship_text": ${ children[i].hardship_text }
+    - "order_county_1": ${ children[i].orders[0].name.text if children[i].waiver_reason['order'] == True else '' }
+    - "order_state_1": ${ children[i].orders[0].state if children[i].waiver_reason['order'] == True else '' }
+    - "order_case_number_1": ${ children[i].orders[0].number if children[i].waiver_reason['order'] == True else '' }
+    - "order_county_2": ${ children[i].orders[1].name.text if children[i].waiver_reason['order'] == True else '' }
+    - "order_state_2": ${ children[i].orders[1].state if children[i].waiver_reason['order'] == True else '' }
+    - "order_case_number_2": ${ children[i].orders[1].number if children[i].waiver_reason['order'] == True else '' }
+    - "order_county_3": ${ children[i].orders[2].name.text if children[i].waiver_reason['order'] == True else '' }
+    - "order_state_3": ${ children[i].orders[2].state if children[i].waiver_reason['order'] == True else '' }
+    - "order_case_number_3": ${ children[i].orders[2].number if children[i].waiver_reason['order'] == True else '' }
+    - "order_county_4": ${ children[i].orders[3].name.text if children[i].waiver_reason['order'] == True else '' }
+    - "order_state_4": ${ children[i].orders[3].state if children[i].waiver_reason['order'] == True else '' }
+    - "order_case_number_4": ${ children[i].orders[3].number if children[i].waiver_reason['order'] == True else '' }
     - "user_signature": ${ users[0].name.full(middle="full") if e_signature else '' }
     - "user__2": ${ users[0].name.full(middle="full") }
     - "user_address": ${ users[0].address.on_one_line(bare=True) }
@@ -2842,59 +2815,6 @@ review:
       % for my_var in children:
         * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
       % endfor
-  - Edit: request_waiver
-    button: |
-      % if children.number_gathered() == 1:
-      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')})'s name change would put them at risk?**
-      % else:
-      **Are you concerned publishing notice of these name changes would put your children at risk?**
-      % endif
-      ${word(yesno(request_waiver))}
-    show if: child_notice_would_be_published == True
-  - Edit:  waiver_reason
-    button: |
-      **Why do you need a notice waiver?**
-      
-      % if waiver_reason['order'] == True:
-      * I have or did have protection from a court order.
-      % endif
-      % if waiver_reason['hardship'] == True:
-      * I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.
-      % endif
-    show if: any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True)
-  - Edit:  protective_order
-    button: |
-      **What kind of court protection do or did you have?**
-      
-      % if protective_order['op'] == True:
-      * An Order of Protection
-      % endif
-      % if protective_order['snco'] == True:
-      * A Stalking No Contact Order
-      % endif
-      % if protective_order['cnco'] == True:
-      * A Civil No Contact Order
-      % endif
-      % if protective_order['other_criminal'] == True:
-      * A Protective order in someone else's criminal case
-      % endif
-      % if protective_order['bail'] == True:
-      * Being a protected person under someone else's bail conditions
-      % endif
-      % if protective_order['other_order'] == True:
-      * A similar protective order in ${other_order_state}
-      % endif
-    show if: waiver_reason['order'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
-  - Edit: order_against_parents
-    button: |
-       **Is the protective order against another parent, guardian, or custodian?**
-       ${word(yesno(order_against_parents))}
-    show if: protective_order.any_true() == True and (waiver_reason['order'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))) 
-  - Edit: hardship_text
-    button: |
-      **Notice and publication would be a hardship because:**
-      ${hardship_text}
-    show if: (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
   - label: Edit
     fields:
       - trial_court_index
@@ -2944,59 +2864,6 @@ review:
       % for my_var in children:
         * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
       % endfor
-  - Edit: request_waiver
-    button: |
-      % if children.number_gathered() == 1:
-      **Are you concerned publishing notice of ${children[0].new.name.full(middle='full')} (${children[0].name.full(middle='full')})'s name change would put them at risk?**
-      % else:
-      **Are you concerned publishing notice of these name changes would put your children at risk?**
-      % endif
-      ${word(yesno(request_waiver))}
-    show if: child_notice_would_be_published
-  - Edit:  waiver_reason
-    button: |
-      **Why do you need a notice waiver?**
-      
-      % if waiver_reason['order'] == True:
-      * I have or did have protection from a court order.
-      % endif
-      % if waiver_reason['hardship'] == True:
-      * I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.
-      % endif
-    show if: any_risk == True or (child_notice_would_be_published == True and showifdef('request_waiver') == True)
-  - Edit:  protective_order
-    button: |
-      **What kind of court protection do or did you have?**
-      
-      % if protective_order['op'] == True:
-      * An Order of Protection
-      % endif
-      % if protective_order['snco'] == True:
-      * A Stalking No Contact Order
-      % endif
-      % if protective_order['cnco'] == True:
-      * A Civil No Contact Order
-      % endif
-      % if protective_order['other_criminal'] == True:
-      * A Protective order in someone else's criminal case
-      % endif
-      % if protective_order['bail'] == True:
-      * Being a protected person under someone else's bail conditions
-      % endif
-      % if protective_order['other_order'] == True:
-      * A similar protective order in ${other_order_state}
-      % endif
-    show if: waiver_reason['order'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
-  - Edit: order_against_parents
-    button: |
-       **Is the protective order against another parent, guardian, or custodian?**
-       ${word(yesno(order_against_parents))}
-    show if: protective_order.any_true() == True and (waiver_reason['order'] == True and (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))) 
-  - Edit: hardship_text
-    button: |
-      **Notice and publication would be a hardship because:**
-      ${hardship_text}
-    show if: (any_risk == True or (child_notice_would_be_published == True and request_waiver == True))
 ---
 section: Children and parents
 id: children review screen
@@ -3023,7 +2890,7 @@ review:
   #      * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
   #    % endfor
 ---
-id: children review
+id: children review screen
 continue button field: children.revisit
 question: |
   Edit the information about the children
@@ -3064,7 +2931,7 @@ columns:
 delete buttons: True
 confirm: True
 ---
-id: child review
+id: child review screen
 continue button field: x.review_child
 generic object: ALIndividual
 question: |
@@ -3293,6 +3160,58 @@ review:
         * ${ my_var.name.full(middle="full")}
       % endfor
     show if: x.any_other_parents
+  - note: |
+      #### Notice and waiver
+    show if: x.any_to_notify
+  - Edit: x.request_waiver
+    button: |
+      **Are you concerned publishing notice of ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s name change would put them at risk?**
+      ${word(yesno(x.request_waiver))}
+    show if: x.child_notice_would_be_published == True
+  - Edit:  x.waiver_reason
+    button: |
+      **Why do you need a notice waiver?**
+      
+      % if x.waiver_reason['order'] == True:
+      * I have or did have protection from a court order.
+      % endif
+      % if x.waiver_reason['hardship'] == True:
+      * I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.
+      % endif
+    show if: x.any_risk == True or (x.child_notice_would_be_published == True and showifdef('x.request_waiver') == True)
+  - Edit:  x.protective_order
+    button: |
+      **What kind of court protection do or did you have?**
+      
+      % if x.protective_order['op'] == True:
+      * An Order of Protection
+      % endif
+      % if x.protective_order['snco'] == True:
+      * A Stalking No Contact Order
+      % endif
+      % if x.protective_order['cnco'] == True:
+      * A Civil No Contact Order
+      % endif
+      % if x.protective_order['other_criminal'] == True:
+      * A Protective order in someone else's criminal case
+      % endif
+      % if x.protective_order['bail'] == True:
+      * Being a protected person under someone else's bail conditions
+      % endif
+      % if x.protective_order['other_order'] == True:
+      * A similar protective order in ${x.other_order_state}
+      % endif
+    show if: x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))
+  - Edit: x.order_against_parents
+    button: |
+       **Is the protective order against another parent, guardian, or custodian?**
+       ${word(yesno(x.order_against_parents))}
+    show if: x.protective_order.any_true() == True and (x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))) 
+  - Edit: x.hardship_text
+    button: |
+      **Notice and publication would be a hardship because:**
+      ${x.hardship_text}
+    show if: (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))
 ---
 id: convictions revisit
 continue button field: children[i].convictions.revisit
