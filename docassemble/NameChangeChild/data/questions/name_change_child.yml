@@ -923,6 +923,11 @@ code: |
       child.skip = False
   check_for_skips = True
 ---
+id: debug screen
+continue button field: debug_screen
+question: |
+  Debug screen
+---
 #This code block handles logic for generating the text of the waiver reason question
 #depends on:
 #  - children[i].any_other_parents
@@ -975,6 +980,11 @@ code: |
     if not child.skip:
     
     #The code for the main_other_parent object should match the code in the for loop for the parents list.  
+      if use_safe_address:
+        if not child.use_safe_address:
+          child.address.address
+      else:
+        child.address.address
       if child.no_main_parent == False:
         if child.main_other_parent.rights_terminated == False:
           if child.main_other_parent.address_known == True:
@@ -991,6 +1001,7 @@ code: |
               child.main_other_parent.receive_method 
             
             if child.main_other_parent.risk_check == True:
+              debug_screen
               any_risk = True
               child.any_risk = True
             else:
@@ -1044,11 +1055,14 @@ code: |
               else:  
                  notarized_signature
     if child.any_risk or (child.child_notice_would_be_published == True and child.request_waiver == True):
+      if child.request_waiver:
+        child.any_risk = True
       child.note_about_waiver
       if child.waiver_reason['order'] == True:
         if child.protective_order.any_true():
           child.order_against_parents
-          child.orders.gather()             
+          child.orders.gather()        
+      child.hardship_text
     parent_list_generator.there_is_another = False 
  
   #The following block generates a list of which children would need to be included in a publication notice. 
@@ -3004,7 +3018,7 @@ review:
     button: |
       **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address:**
       ${x.address.on_one_line(bare=True)}
-    show if: use_safe_address == False or x.use_safe_address == False
+    show if: showifdef('x.use_safe_address') != True
   - note: |
       #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s criminal history
   - Edit: x.pending_arrests
@@ -3162,7 +3176,6 @@ review:
     show if: x.any_other_parents
   - note: |
       #### Notice and waiver
-    show if: x.any_to_notify
   - Edit: x.request_waiver
     button: |
       **Are you concerned publishing notice of ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s name change would put them at risk?**
@@ -3178,7 +3191,7 @@ review:
       % if x.waiver_reason['hardship'] == True:
       * I need a waiver of notice and publication of name change because it would be a hardship for the person who is changing their name.
       % endif
-    show if: x.any_risk == True or (x.child_notice_would_be_published == True and showifdef('x.request_waiver') == True)
+    #show if: x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True)
   - Edit:  x.protective_order
     button: |
       **What kind of court protection do or did you have?**
@@ -3201,17 +3214,17 @@ review:
       % if x.protective_order['other_order'] == True:
       * A similar protective order in ${x.other_order_state}
       % endif
-    show if: x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))
+    #show if: x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))
   - Edit: x.order_against_parents
     button: |
        **Is the protective order against another parent, guardian, or custodian?**
        ${word(yesno(x.order_against_parents))}
-    show if: x.protective_order.any_true() == True and (x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))) 
+    #show if: x.protective_order.any_true() == True and (x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))) 
   - Edit: x.hardship_text
     button: |
       **Notice and publication would be a hardship because:**
       ${x.hardship_text}
-    show if: (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))
+    #show if: x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True)
 ---
 id: convictions revisit
 continue button field: children[i].convictions.revisit
