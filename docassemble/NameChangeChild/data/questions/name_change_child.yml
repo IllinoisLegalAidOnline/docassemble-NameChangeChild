@@ -667,7 +667,7 @@ continue button field: children[i].deceased_info
 question: |
   About ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s deceased parent
 subquestion: |
-  You may need to prove to the court that ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent has passed away. If you have a copy of their death certificate, you may want to show it to the judge.
+  You may need to prove to the court that ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s other parent has passed away. Be prepared to present a copy of their death certificate to the judge.
 ---
 id: main other parent
 question: |
@@ -1176,7 +1176,7 @@ id: waiver reasons
 question: |
   Why do you need a notice waiver for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})?
 subquestion: |
-  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}.
+  You may need a waiver if you have or did have protection from a court order. You may also need a waiver if publication would be a hardship for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}).
   
   A protective court order can include:
   
@@ -1328,9 +1328,9 @@ fields:
 id: hardship reason
 question: |
   % if children[i].child_notice_would_be_published == True:
-  Explain why publication and giving notice would be a hardship
+  Explain why publication and giving notice would be a hardship for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})
   % else:
-  Explain why giving notice would be a hardship
+  Explain why giving notice would be a hardship for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})
   % endif
 subquestion: |
   ${collapse_template(notice_waiver_example)}
@@ -2183,13 +2183,13 @@ attachment:
         % if children[i].main_other_parent.address_known == True:
         ${children[i].main_other_parent.address.on_one_line(bare=True)}
         % else:
-        ${""}
+        ${"Unknown"}
         % endif
         % elif children[i].include_parents_zero_on_child_sheet == True:
         % if children[i].parents[0].address_known == True:
         ${children[i].parents[0].address.on_one_line(bare=True)}
         % else:
-        ${""}
+        ${"Unknown"}
         % endif
         % endif
     - "other_parent_disagree": |
@@ -3180,7 +3180,7 @@ review:
     button: |
       **Are you concerned publishing notice of ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s name change would put them at risk?**
       ${word(yesno(x.request_waiver))}
-    show if: x.child_notice_would_be_published == True
+    #show if: x.child_notice_would_be_published == True
   - Edit:  x.waiver_reason
     button: |
       **Why do you need a notice waiver?**
