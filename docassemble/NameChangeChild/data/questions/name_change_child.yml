@@ -161,6 +161,11 @@ code: |
   	'started_interview': True, 
   	}
     
+  try:
+    stuff_to_snapshot['ip_address'] = device(ip=True)
+  except:
+    pass
+
   stuff_to_snapshot['user_zip'] = showifdef('users[0].address.zip')
 
   stuff_to_snapshot['downloaded_forms'] = showifdef('forms_assembling')
@@ -1016,7 +1021,8 @@ code: |
                       if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
                           already_included = True                      
                 if already_included == False:
-                  parent_list_generator.append(child.main_other_parent)
+                  if not child.any_risk and not showifdef('child.child_notice_would_be_published') and not showifdef('child.request_waiver'):
+                    parent_list_generator.append(child.main_other_parent)
           else:  
              notarized_signature
       
@@ -1051,11 +1057,12 @@ code: |
                           if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
                               already_included = True                      
                     if already_included == False:
-                      parent_list_generator.append(parent)
+                      if not child.any_risk and not showifdef('child.child_notice_would_be_published') and not showifdef('child.request_waiver'):
+                        parent_list_generator.append(parent)
               else:  
                  notarized_signature
     if child.any_risk or (child.child_notice_would_be_published == True and child.request_waiver == True):
-      if child.request_waiver:
+      if showifdef('child.request_waiver'):
         child.any_risk = True
       child.note_about_waiver
       if child.waiver_reason['order'] == True:
@@ -3018,7 +3025,7 @@ review:
     button: |
       **${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s address:**
       ${x.address.on_one_line(bare=True)}
-    show if: showifdef('x.use_safe_address') != True
+    #show if: showifdef('x.use_safe_address') != True
   - note: |
       #### ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s criminal history
   - Edit: x.pending_arrests
