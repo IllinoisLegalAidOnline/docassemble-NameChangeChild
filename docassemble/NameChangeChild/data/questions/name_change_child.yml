@@ -293,7 +293,7 @@ subquestion: |
   
   The forms you create can only be used in Illinois.
   
-  To learn more, read ILAO's article about [**Starting a case to change a child's name**](https://www.illinoislegalaid.org/node/30586).
+  To learn more, read ILAO's article about [**starting a case to change a child's name**](https://www.illinoislegalaid.org/node/30586).
 field: sees_nav_bar
 ---
 id: instructions
@@ -1254,15 +1254,17 @@ question: |
 subquestion: |
   % if children[i].child_notice_would_be_published == True:
   % if children[i].any_risk == False:
-  Based on your answers, you are concerned that publishing notice of your child's name change request could put them at risk.
+  Based on your answers, you are concerned that publishing notice of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change request could put them at risk.
   % else:
-  Based on your answers, you are concerned that publishing notice of your child's name change request and notifying at least one of their parents, guardians, and custodians could put them at risk.
+  Based on your answers, you are concerned that publishing notice of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change request could put them at risk. 
+  
+  You are also concerned that notifying their parents, guardians, and custodians could put them at risk.
   % endif
   % else:
-  Based on your answers, you are concerned that notifying at least one of your child's parents, guardians, and custodians of their name change request could put them at risk.
+  Based on your answers, you are concerned that notifying ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s parents, guardians, and custodians of their name change request could put them at risk.
   % endif
   
-  This program can make a *Motion to Waive Notice and Publication* for you, but the judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
+  This program can make a *Motion to Waive Notice and Publication* for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change, but the judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
   
   If you do not want to give notice, you may want a lawyer to help you. Use [**Get Legal Help**](https://www.illinoislegalaid.org/get-legal-help) to find free or low-cost legal services in your area.
 ---
@@ -3274,7 +3276,7 @@ review:
       % endfor
     show if: x.any_other_parents
   - note: |
-      #### Notice and waiver
+      #### Notice and waiver (if applicable)
   - Edit: x.request_waiver
     button: |
       **Are you concerned publishing notice of ${x.new.name.full(middle='full')} (${x.name.full(middle='full')})'s name change would put them at risk?**
