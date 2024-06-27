@@ -1,4 +1,4 @@
-metadata:
+ metadata:
   title: Name change for a child
   short title: Child name change
   comment: This program makes the forms to ask the court to change the names of minor children.
@@ -152,6 +152,7 @@ code: |
     refresh_notice_bundle
   template_variable_logic
   forms_assembling
+  waiver_reason_logic
   snapshot_forms
   get_docs_screen
 ---
@@ -929,9 +930,50 @@ code: |
   check_for_skips = True
 ---
 id: debug screen
-continue button field: debug_screen
+continue button field: children[i].new_debug_screen
 question: |
   Debug screen
+subquestion: |
+  Notice list index tracker: ${notice_list_index_tracker}
+  
+  Parent list generator number gathered: ${parent_list_generator.number_gathered()}
+  
+  ${children[i].name.full(middle='full')}
+  
+  name list: comma_and_list(parent_list_generator)}
+  
+  Do these names not match? 
+  
+  * Parent list generator name: parent_list_generator[notice_list_index_tracker].name.full(middle='full')
+  * Main other parent name: child.main_other_parent.name.full(middle='full')
+---
+id: more debug
+continue button field: more_debug
+question: |
+  more debug!
+subquestion: |
+ how many parents in p_l_g? ${parent_list_generator.number_gathered()}
+ 
+ % if parent_list_generator.number_gathered() > 0:
+ Whose listed? ${comma_and_list(parent_list_generator)}
+ % else:
+ Empty list
+ % endif
+ 
+ First in index? ${parent_list_generator[0].name.full(middle='full')}
+---
+id: third debug
+continue button field: third_debug
+question: |
+  Third debug
+subquestion: |
+  how many parents in p_l_g? ${parent_list_generator.number_gathered()}
+---
+generic object: ALIndividual
+continue button field: x.guardian_debug
+id: guardian debug
+question: |
+  guardian debug
 ---
 #This code block handles logic for generating the text of the waiver reason question
 #depends on:
@@ -964,6 +1006,7 @@ question: |
 reconsider: True
 code: |
   #Parent list generator is used to gather the information of parents who the user must notify. This list is generated because just iterating through all known parents would include empty objects and parents who do not need to be notified.
+  
   parent_list_generator.clear()
   parent_list_generator.there_is_another = False 
   #The parent count variable is used with parent list generator. It is used as the index variable and is incremented whenever a parent is added to the list.
@@ -1006,7 +1049,7 @@ code: |
               child.main_other_parent.receive_method 
             
             if child.main_other_parent.risk_check == True:
-              debug_screen
+              
               any_risk = True
               child.any_risk = True
             else:
@@ -1070,6 +1113,7 @@ code: |
           child.order_against_parents
           child.orders.gather()        
       child.hardship_text
+    
     parent_list_generator.there_is_another = False 
  
   #The following block generates a list of which children would need to be included in a publication notice. 
@@ -1097,10 +1141,53 @@ code: |
                 child.safe_publish = False
             child_publish_parent_index += 1
         if child.safe_publish == True and child.need_publish == True:
-          published_children.append(child)
-          include_publication_notice = True
-          any_pubish_waiver_requested = True
+          if not child.any_risk and not showifdef('child.request_waiver'):
+            published_children.append(child)
+            include_publication_notice = True
+        elif child.need_publish:
+            any_pubish_waiver_requested = True
   published_children.there_is_another = False
+  
+  #This code block removes any parents in the list of parents to notify attached to children for whom the user wants to waive notice for another parent. It would make more sense to have not included them in the first place, but this is a change added after publication so adding this popping approach, while less efficient, requires less detangling of the code.
+  if parent_list_generator.number_gathered() > 0:
+    
+    for child in children:
+      
+      if child.any_risk or showifdef('child.request_waiver') == True:
+        
+        notice_list_index_tracker = 0
+        
+        while (notice_list_index_tracker < parent_list_generator.number_gathered()) and (parent_list_generator.number_gathered() > 0):
+          
+          popped_main_parent = False
+          any_popped_in_parents_list = False
+          if parent_list_generator.number_gathered() > 0:
+            
+            #if notice_list_index_tracker == 1:
+              #child.new_debug_screen
+            
+            if child.no_main_parent == False:  
+              if defined('parent_list_generator[notice_list_index_tracker].name.first'):
+                if parent_list_generator[notice_list_index_tracker].name.full(middle='full') == child.main_other_parent.name.full(middle='full'):
+                  parent_list_generator.pop(notice_list_index_tracker)
+                  #third_debug
+                  popped_main_parent = True
+            if not popped_main_parent:  
+              
+              if child.any_other_parents == True and parent_list_generator.number_gathered() > 0:
+                #child.new_debug_screen
+                for childs_parent in child.parents:
+                  if defined('parent_list_generator[notice_list_index_tracker].name.first'):
+                    if parent_list_generator[notice_list_index_tracker].name.full(middle='full') == childs_parent.name.full(middle='full'):
+                      #childs_parent.guardian_debug
+                      parent_list_generator.pop(notice_list_index_tracker)
+                      any_popped_in_parents_list = True
+          if not any_popped_in_parents_list and not popped_main_parent:
+            notice_list_index_tracker += 1
+            
+            #child.new_debug_screen
+          
+  
   waiver_reason_logic = True
 ---
 reconsider: True
@@ -1136,7 +1223,7 @@ code: |
     if child.any_other_parents:
       for parent in child.parents:
         parent.publication_needer = False
-        if parent.address_known == False and parent.agree != True and parent.risk_check != True and child.request_waiver != True:
+        if parent.address_known == False and parent.agree != True and parent.risk_check != True and showifdef('child.request_waiver') != True:
           parent.publication_needer = True
   template_variable_logic = True
 ---
@@ -2059,6 +2146,7 @@ objects:
 reconsider: True
 code: |
   #debug_list.clear()
+  
   elements_for_notice_bundle = []
   
   if parent_list_generator.number_gathered() > 0:
@@ -2069,8 +2157,12 @@ code: |
         elements_for_notice_bundle.append(person.notice_of_court_date)
         if (index + 1) < parent_list_generator.number_gathered():
           person.second_person = parent_list_generator[index + 1]
+        elif defined('person.second_person'):
+          undefine('person.second_person')
         if (index + 2) < parent_list_generator.number_gathered():
           person.third_person = parent_list_generator[index + 2]
+        elif defined('person.third_person'):
+          undefine('person.third_person')
       else:
         person.notice_of_court_date.enabled = False
       
