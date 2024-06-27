@@ -1264,7 +1264,7 @@ subquestion: |
   Based on your answers, you are concerned that notifying ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s parents, guardians, and custodians of their name change request could put them at risk.
   % endif
   
-  This program can make a *Motion to Waive Notice and Publication* for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change, but the judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
+  This program can make a *Motion to Waive Notice and Publication* for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change. The judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
   
   If you do not want to give notice, you may want a lawyer to help you. Use [**Get Legal Help**](https://www.illinoislegalaid.org/get-legal-help) to find free or low-cost legal services in your area.
 ---
@@ -1742,21 +1742,25 @@ objects:
   - request: ALDocument.using(title="Request for name change (minor children)", filename="minor_name_change_request.pdf", has_addendum=False)
   - additional_children: ALDocument.using(title="Additional children", filename="additional_children.pdf", has_addendum=False)
   - publication_notice: ALDocument.using(title = "Publication notice of court date", filename="publication_notice.pdf", has_addendum=False)
-  - order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
+  #- order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
   - order: ALDocument.using(title = "Order for name change (minor name change)", filename="order.pdf", has_addendum=False)
   #- motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 objects:
   - children[i].additional_parents_bundle: ALDocumentBundle.using(elements=[], filename="additional_parent.pdf", title = "Additional parents", enabled=True)
 ---
+
+---
 reconsider: True
 code: |
   elements_for_children_bundle = []
   elements_for_waive_bundle = []
+  elements_for_waive_order_bundle = []
   
   for index, child in enumerate(children):
     child.elements_for_additional_parents_bundle = []
     child.motion_to_waive_notice.enabled = False
+    child.order_to_waive_notice.enabled = False
     if not child.skip:
       for index, parent in enumerate(child.parents):
         child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
@@ -1764,9 +1768,12 @@ code: |
       elements_for_children_bundle.append(child.single_child_bundle)
       if child.any_risk == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
         child.motion_to_waive_notice.enabled = True
+        child.order_to_waive_notice.enabled = True
         elements_for_waive_bundle.append(child.motion_to_waive_notice)
+        elements_for_waive_order_bundle.append(child.order_to_waive_notice)
   organized_children_bundle.elements = elements_for_children_bundle
   motion_to_waive_bundle.elements = elements_for_waive_bundle
+  order_to_waive_bundle.elements = elements_for_waive_order_bundle
   refresh_bundles = True
 ---
 #This code block removes skipped children from the children list object. A for loop would not work well for this purpose, since each pop would change which child a given index refers to, so a clunky while loop with a integer variable is used.
@@ -1801,8 +1808,8 @@ objects:
   - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
 ---
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, order_to_waive_notice, change_order_bundle], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, change_order_bundle, order_to_waive_notice], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, change_order_bundle, order_to_waive_bundle], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
@@ -1824,7 +1831,6 @@ code: |
     #while child_loop_index < children.number_gathered():
   
     for child in children:  
-      
       child.has_custodian = False
       child.has_guardian = False
       
@@ -1861,19 +1867,19 @@ code: |
         
         
   #motion_to_waive_notice.enabled = False
-  order_to_waive_notice.enabled = False
+  #order_to_waive_notice.enabled = False
   publication_notice.enabled = False
   
   #for child in children:
   #  child.motion_to_waive_notice.enabled = False
   #
-  if any_risk == True or (child_notice_would_be_published == True and showifdef('any_pubish_waiver_requested') == True):
+  #if any_risk == True or (child_notice_would_be_published == True and showifdef('any_pubish_waiver_requested') == True):
     #for child in children:
     #  if not child.skip:
     #    if child.other_parent_status == "has_other_parent" or child.any_other_parents:
     #      if showifdef('child.any_risk') == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
     #        child.motion_to_waive_notice.enabled = True
-    order_to_waive_notice.enabled = True
+    #order_to_waive_notice.enabled = True
   for child in children:
     if include_publication_notice == True and showifdef('child.request_waiver') != True:
       publication_notice.enabled = True
@@ -1988,8 +1994,9 @@ attachment:
     - "child_new_middle_11": ${children[10].new.name.middle}
     - "child_new_last_11": ${children[10].new.name.last if children[10].new.name.suffix == "" else (children[10].new.name.last + " " + children[10].new.name.suffix)}
 ---
+generic object: ALIndividual
 attachment:
-  variable name: order_to_waive_notice[i]
+  variable name: x.order_to_waive_notice[i]
   name: order_to_waive_notice
   filename: order_to_waive_notice
   skip undefined: True
@@ -1999,8 +2006,9 @@ attachment:
     - "trial_court_county": ${filing_county}
     - "user": ${ users[0].name.full(middle="full") }
 ---    
+generic object: ALIndividual
 attachment:
-  variable name: children[i].motion_to_waive_notice[j]
+  variable name: x.motion_to_waive_notice[i]
   name: motion_to_waive_notice
   filename: motion_to_waive_notice
   skip undefined: True
@@ -2009,36 +2017,38 @@ attachment:
   fields:      
     - "trial_court_county": ${ trial_court.address.county.upper() }
     - "user__1": ${ users[0].name.full(middle="full") }
-    - "waiver_order_cb": ${ True if children[i].waiver_reason['order'] == True else '' }
-    - "protective_order_op": ${ True if children[i].protective_order['op'] == True else '' }
-    - "protective_order_snco": ${ True if children[i].protective_order['snco'] == True else '' }
-    - "protective_order_cnco": ${ True if children[i].protective_order['cnco'] == True else '' }
-    - "protective_order_criminal": ${ True if children[i].protective_order['other_criminal'] == True else '' }
-    - "protective_order_bail": ${ True if children[i].protective_order['bail'] == True else '' }
-    - "protective_order_other": ${ True if children[i].protective_order['other_order'] == True else '' }
-    - "protective_order_other_state": ${ children[i].other_order_state if children[i].protective_order['other_order'] else '' }
-    - "protective_order_minor_parent": ${ children[i].order_against_parents }
-    - "waiver_hardship_cb": ${ True if children[i].waiver_reason['hardship'] == True else '' }
-    - "hardship_text": ${ children[i].hardship_text }
-    - "order_county_1": ${ children[i].orders[0].name.text if children[i].waiver_reason['order'] == True else '' }
-    - "order_state_1": ${ children[i].orders[0].state if children[i].waiver_reason['order'] == True else '' }
-    - "order_case_number_1": ${ children[i].orders[0].number if children[i].waiver_reason['order'] == True else '' }
-    - "order_county_2": ${ children[i].orders[1].name.text if children[i].waiver_reason['order'] == True else '' }
-    - "order_state_2": ${ children[i].orders[1].state if children[i].waiver_reason['order'] == True else '' }
-    - "order_case_number_2": ${ children[i].orders[1].number if children[i].waiver_reason['order'] == True else '' }
-    - "order_county_3": ${ children[i].orders[2].name.text if children[i].waiver_reason['order'] == True else '' }
-    - "order_state_3": ${ children[i].orders[2].state if children[i].waiver_reason['order'] == True else '' }
-    - "order_case_number_3": ${ children[i].orders[2].number if children[i].waiver_reason['order'] == True else '' }
-    - "order_county_4": ${ children[i].orders[3].name.text if children[i].waiver_reason['order'] == True else '' }
-    - "order_state_4": ${ children[i].orders[3].state if children[i].waiver_reason['order'] == True else '' }
-    - "order_case_number_4": ${ children[i].orders[3].number if children[i].waiver_reason['order'] == True else '' }
+    - "waiver_order_cb": ${ True if x.waiver_reason['order'] == True else '' }
+    - "protective_order_op": ${ True if x.protective_order['op'] == True else '' }
+    - "protective_order_snco": ${ True if x.protective_order['snco'] == True else '' }
+    - "protective_order_cnco": ${ True if x.protective_order['cnco'] == True else '' }
+    - "protective_order_criminal": ${ True if x.protective_order['other_criminal'] == True else '' }
+    - "protective_order_bail": ${ True if x.protective_order['bail'] == True else '' }
+    - "protective_order_other": ${ True if x.protective_order['other_order'] == True else '' }
+    - "protective_order_other_state": ${x.other_order_state if x.protective_order['other_order'] else '' }
+    - "protective_order_minor_parent": ${ x.order_against_parents }
+    - "waiver_hardship_cb": ${ True if x.waiver_reason['hardship'] == True else '' }
+    - "hardship_text": ${ x.hardship_text }
+    - "order_county_1": ${ x.orders[0].name.text if x.waiver_reason['order'] == True else '' }
+    - "order_state_1": ${ x.orders[0].state if x.waiver_reason['order'] == True else '' }
+    - "order_case_number_1": ${ x.orders[0].number if x.waiver_reason['order'] == True else '' }
+    - "order_county_2": ${ x.orders[1].name.text if x.waiver_reason['order'] == True else '' }
+    - "order_state_2": ${ x.orders[1].state if x.waiver_reason['order'] == True else '' }
+    - "order_case_number_2": ${ x.orders[1].number if x.waiver_reason['order'] == True else '' }
+    - "order_county_3": ${ x.orders[2].name.text if x.waiver_reason['order'] == True else '' }
+    - "order_state_3": ${x.orders[2].state if x.waiver_reason['order'] == True else '' }
+    - "order_case_number_3": ${ x.orders[2].number if x.waiver_reason['order'] == True else '' }
+    - "order_county_4": ${ x.orders[3].name.text if x.waiver_reason['order'] == True else '' }
+    - "order_state_4": ${ x.orders[3].state if x.waiver_reason['order'] == True else '' }
+    - "order_case_number_4": ${ x.orders[3].number if x.waiver_reason['order'] == True else '' }
     - "user_signature": ${ users[0].name.full(middle="full") if e_signature else '' }
     - "user__2": ${ users[0].name.full(middle="full") }
     - "user_address": ${ users[0].address.on_one_line(bare=True) }
     - "user_hide_address_cb": ${ True if use_safe_address else '' }
     - "user_phone": ${ phone_number_formatted(users[0].phone_number) }
     - "user_atty_number": ${ '' }
-    - "user_email": ${ users[0].email if users[0].email_notice else '' }
+    - "user_email": ${ users[0].email if users[0].has_email_address else '' }
+---
+#JUMP
 ---
 generic object: ALIndividual
 attachment:
@@ -2142,6 +2152,7 @@ objects:
   - children[i].parents[j].parent_info_sheet: ALDocument.using(title="Parent information", filename="additional_parent.pdf", has_addendum=False)
   - children[i].additional_criminal_history: ALDocument.using(title="Additional Criminal History", filename="child_name_change_additional_criminal_history.pdf", has_addendum=False)  
   - children[i].motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
+  - children[i].order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False, enabled=False)
 ---
 generic object: ALIndividual
 objects:
@@ -2178,6 +2189,7 @@ objects:
 ---
 objects:
   - motion_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Motion to waive notice", filename="motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
+  - order_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Order on motion to waive notice", filename="order_on_motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
 ---
 attachment:
   variable name: children[i].child_information[j]
@@ -2293,6 +2305,20 @@ attachment:
         ${children[i].parents[0].address.on_one_line(bare=True)}
         % else:
         ${"Unknown"}
+        % endif
+        % endif
+    - "other_parent_name_full": |
+        % if children[i].include_main_parent_on_child_sheet == True:
+        % if children[i].main_other_parent.agree == True:
+        ${children[i].main_other_parent.name.full(middle='full')}
+        % else:
+        ${""}
+        % endif
+        % elif children[i].include_parents_zero_on_child_sheet == True:
+        % if children[i].parents[0].agree == True:
+        ${children[i].parents[0].name.full(middle='full')}
+        % else:
+        ${""}
         % endif
         % endif
     - "other_parent_disagree": |
@@ -2478,6 +2504,7 @@ attachment:
     - "parental_first": ${children[i].parents[j].name.first}
     - "parental_middle": ${children[i].parents[j].name.middle}
     - "parental_last": ${children[i].parents[j].name.last if children[i].parents[j].name.suffix == "" else (children[i].parents[j].name.last + " " + children[i].parents[j].name.suffix)}
+    - "other_parent_name_full": ${children[i].parents[j].name.full(middle='full') if children[i].parents[j].agree else ""}
     - "parental_address": ${children[i].parents[j].address.on_one_line(bare=True) if children[i].parents[j].address_known else "Unknown"}
     - "certified_or_sheriff": ${True if children[i].parents[j].address_known == True and children[i].parents[j].agree != True else False}
     - "publication_notice": ${children[i].parents[j].publication_needer}
@@ -3323,11 +3350,43 @@ review:
        **Is the protective order against another parent, guardian, or custodian?**
        ${word(yesno(x.order_against_parents))}
     #show if: x.protective_order.any_true() == True and (x.waiver_reason['order'] == True and (x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True))) 
+  - Edit: x.orders.revisit
+    button: |
+      **Protective orders: (Edit to change details)**
+
+      % for my_var in x.orders:
+        * ${ my_var.number } in ${ my_var.name.text }, ${ my_var.state }
+      % endfor
   - Edit: x.hardship_text
     button: |
       **Notice and publication would be a hardship because:**
       ${x.hardship_text}
     #show if: x.any_risk == True or (x.child_notice_would_be_published == True and x.request_waiver == True)
+---
+id: protective orders review screen
+continue button field: children[i].orders.revisit
+question: |
+  Edit the protective orders
+subquestion: |
+  ${ children[i].orders.table }
+
+  % if children[i].orders.number_gathered() < 4:
+  ${ children[i].orders.add_action() }
+  % endif
+---
+table: children[i].orders.table
+rows: children[i].orders
+columns:
+  - Case number: |
+      row_item.number if defined("row_item.name.text") else ""
+  - County: |
+      row_item.name.text if defined("row_item.name.text") else ""
+  - State: |
+      row_item.state if defined("row_item.name.text") else ""
+edit:
+  - name.text
+delete buttons: True
+confirm: True
 ---
 id: convictions revisit
 continue button field: children[i].convictions.revisit
