@@ -1761,7 +1761,7 @@ code: |
         child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
       child.additional_parents_bundle.elements = child.elements_for_additional_parents_bundle
       elements_for_children_bundle.append(child.single_child_bundle)
-      if child.any_risk == True or (child.child_notice_would_be_published == True and child.request_waiver == True):
+      if child.any_risk == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
         elements_for_waive_bundle.append(child.motion_to_waive_notice)
   organized_children_bundle.elements = elements_for_children_bundle
   motion_to_waive_bundle.elements = elements_for_waive_bundle
@@ -1869,7 +1869,7 @@ code: |
     for child in children:
       if not child.skip:
         if child.other_parent_status == "has_other_parent" or child.any_other_parents:
-          if showifdef('child.main_other_parent.risk_check') == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
+          if showifdef('child.any_risk') == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
             child.motion_to_waive_notice.enabled = True
     order_to_waive_notice.enabled = True
   for child in children:
