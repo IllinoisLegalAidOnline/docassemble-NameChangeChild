@@ -2190,8 +2190,8 @@ objects:
   - notice_of_date_bundle: ALDocumentBundle.using(elements=[], title= "Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False, enabled=True)
 ---
 objects:
-  - motion_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Motion to waive notice", filename="motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
-  - order_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Order on motion to waive notice", filename="order_on_motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
+  - motion_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Motion to waive notice (1 for each child who needs one)", filename="motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
+  - order_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Order on motion to waive notice (1 for each motion)", filename="order_on_motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
 ---
 attachment:
   variable name: children[i].child_information[j]
