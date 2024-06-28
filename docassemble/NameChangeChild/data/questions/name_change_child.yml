@@ -968,6 +968,8 @@ question: |
   Third debug
 subquestion: |
   how many parents in p_l_g? ${parent_list_generator.number_gathered()}
+  
+  They are comma_and_list(parent_list_generator)
 ---
 generic object: ALIndividual
 continue button field: x.guardian_debug
@@ -1064,7 +1066,7 @@ code: |
                       if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
                           already_included = True                      
                 if already_included == False:
-                  if not child.any_risk and not showifdef('child.child_notice_would_be_published') and not showifdef('child.request_waiver'):
+                  if not child.any_risk and not showifdef('child.request_waiver'):
                     parent_list_generator.append(child.main_other_parent)
           else:  
              notarized_signature
@@ -1100,7 +1102,7 @@ code: |
                           if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
                               already_included = True                      
                     if already_included == False:
-                      if not child.any_risk and not showifdef('child.child_notice_would_be_published') and not showifdef('child.request_waiver'):
+                      if not child.any_risk and not showifdef('child.request_waiver'):
                         parent_list_generator.append(parent)
               else:  
                  notarized_signature
@@ -1147,7 +1149,7 @@ code: |
         elif child.need_publish:
             any_pubish_waiver_requested = True
   published_children.there_is_another = False
-  
+  #third_debug
   #This code block removes any parents in the list of parents to notify attached to children for whom the user wants to waive notice for another parent. It would make more sense to have not included them in the first place, but this is a change added after publication so adding this popping approach, while less efficient, requires less detangling of the code.
   if parent_list_generator.number_gathered() > 0:
     
