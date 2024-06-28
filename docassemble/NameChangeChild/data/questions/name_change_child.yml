@@ -1254,17 +1254,7 @@ continue button field: children[i].note_about_waiver
 question: |
   About waiving notice
 subquestion: |
-  % if children[i].child_notice_would_be_published == True:
-  % if children[i].any_risk == False:
-  Based on your answers, you are concerned that publishing notice of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change request could put them at risk.
-  % else:
-  Based on your answers, you are concerned that publishing notice of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change request could put them at risk. 
-  
-  You are also concerned that notifying their parents, guardians, and custodians could put them at risk.
-  % endif
-  % else:
-  Based on your answers, you are concerned that notifying ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s parents, guardians, and custodians of their name change request could put them at risk.
-  % endif
+  Based on your answers, you are concerned that notifying the parents, guardians, or custodians of ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change request could put the child at risk.
   
   This program can make a *Motion to Waive Notice and Publication* for ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change. The judge may decide not to grant the motion. Judges often require all of a child's parents to be notified of a name change.
   
@@ -1810,8 +1800,8 @@ objects:
   - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
 ---
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, motion_to_waive_bundle, publication_notice, notice_of_date_bundle, change_order_bundle, order_to_waive_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
@@ -2956,7 +2946,7 @@ review:
       % endif
   - Edit: children.revisit
     button: |
-      **Children: (Edit to change names, addresses, and other guardians)**
+      **Children: (Edit to change names, addresses, and other information)**
 
       % for my_var in children:
         * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
@@ -3030,7 +3020,7 @@ review:
     show if: users[0].name.first == "This is just included so the Children review screen can have the table and the resume button"
   #- Edit: children.revisit
   #  button: |
-  #    **Children: (Edit to change names, addresses, and other guardians)**
+  #    **Children: (Edit to change names, addresses, and other information)**
 #
   #    % for my_var in children:
   #      * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
@@ -3060,7 +3050,7 @@ rows: children
 columns:
   - Current name: |
       row_item.name.full(middle="full") if defined("row_item.name.first") else ""
-  - New name, address, criminal records, and other guardians: |
+  - New name, address, and other information: |
       action_button_html(url_action(row_item.attr_name("review_child")), label="Edit", icon="pencil-alt")
 delete buttons: True
 confirm: True
