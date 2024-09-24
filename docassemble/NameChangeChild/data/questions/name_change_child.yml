@@ -1,4 +1,4 @@
- metadata:
+metadata:
   title: Name change for a child
   short title: Child name change
   comment: This program makes the forms to ask the court to change the names of minor children.
@@ -145,6 +145,7 @@ code: |
   set_progress(100)
   nav.set_section('section_download')
   #enabled_enabler
+  #parents_zero_debug
   pop_skipped_children
   parent_on_child_sheet_logic
   refresh_bundles
@@ -1192,6 +1193,8 @@ code: |
   
   waiver_reason_logic = True
 ---
+sets:
+  - children[i].include_parents_zero_on_child_sheet
 reconsider: True
 code: |
   any_under_six_months = False
@@ -1689,6 +1692,14 @@ subquestion: |
   
   &nbsp;
 ---
+id: parents zero debug
+continue button field: parents_zero_debug
+question: |
+    DEBUG
+subquestion: |
+  Here is the value for child zero's include parents zero:
+  ${word(yesno(children[0].include_parents_zero_on_child_sheet ))}
+---
 id: get docs screen
 event: get_docs_screen
 question: |
@@ -1758,7 +1769,11 @@ code: |
       for index, parent in enumerate(child.parents):
         child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
       child.additional_parents_bundle.elements = child.elements_for_additional_parents_bundle
-      elements_for_children_bundle.append(child.single_child_bundle)
+      #The next line is commented out to test for an issue with the single_child_bundle. The alternative is appending each element within the bundle individually.
+      #elements_for_children_bundle.append(child.single_child_bundle)
+      elements_for_children_bundle.append(child.child_information)
+      elements_for_children_bundle.append(child.additional_criminal_history)
+      elements_for_children_bundle.append(child.additional_parents_bundle)
       if child.any_risk == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
         child.motion_to_waive_notice.enabled = True
         child.order_to_waive_notice.enabled = True
@@ -1777,13 +1792,18 @@ code: |
   excluded_children_count = 0
   while iteration_tracker < children.number_gathered():
     if children[iteration_tracker].skip:
+      #pop_debug
       children.pop(iteration_tracker)
       excluded_children_count += 1
     else:
       iteration_tracker += 1
       included_children_count += 1
   pop_skipped_children = True
-  
+---
+id: pop debug
+continue button field: pop_debug
+question: |
+    The pop code block is getting run
 ---
 objects:
   - children[i].single_child_bundle: ALDocumentBundle.using(elements=[children[i].child_information, children[i].additional_criminal_history, children[i].additional_parents_bundle], filename="single_child_information.pdf", title = "Child information", enabled=True)
