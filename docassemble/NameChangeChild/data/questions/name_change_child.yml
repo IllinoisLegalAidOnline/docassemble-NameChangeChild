@@ -1,4 +1,4 @@
- metadata:
+metadata:
   title: Name change for a child
   short title: Child name change
   comment: This program makes the forms to ask the court to change the names of minor children.
@@ -145,6 +145,7 @@ code: |
   set_progress(100)
   nav.set_section('section_download')
   #enabled_enabler
+  #parents_zero_debug
   pop_skipped_children
   parent_on_child_sheet_logic
   refresh_bundles
@@ -1192,6 +1193,8 @@ code: |
   
   waiver_reason_logic = True
 ---
+sets:
+  - children[i].include_parents_zero_on_child_sheet
 reconsider: True
 code: |
   any_under_six_months = False
@@ -1688,6 +1691,14 @@ subquestion: |
   ###### You do not need to refresh your screen. Hang in there!
   
   &nbsp;
+---
+id: parents zero debug
+continue button field: parents_zero_debug
+question: |
+    DEBUG
+subquestion: |
+  Here is the value for child zero's include parents zero:
+  ${word(yesno(children[0].include_parents_zero_on_child_sheet ))}
 ---
 id: get docs screen
 event: get_docs_screen
