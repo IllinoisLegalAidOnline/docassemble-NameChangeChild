@@ -713,7 +713,7 @@ continue button field: about_other_parentals
 question: |
   Notifying other parents, guardians, and custodians
 subquestion: |
-  If your child's other parents, guardians, and custodians agree to your child's name change, they will need to sign the name change request.
+  If your child's other parents, guardians, and custodians agree to your child's name change, they will need to sign the name change request before a notary.
 
   If any of them do not agree to the name change, you will need to notify them of the name change request. However, you may ask the court to not require you to notify them. Courts usually do not require notification if it could risk hardship for the child.
 ---
@@ -806,7 +806,7 @@ id: parents list parent agree
 question: |
   Does ${children[i].parents[j].name.full(middle='full')} agree to ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change?
 subquestion: |
-  If ${children[i].parents[j].name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
+  If ${children[i].parents[j].name.full(middle='full')} agrees to the name change, they will need to sign the name change request before a notary.
   
   If ${children[i].parents[j].name.full(middle='full')} cannot sign the name change request, you should select **No** here.
   
@@ -819,7 +819,7 @@ id: main other parent agree
 question: |
   Does ${children[i].main_other_parent.name.full(middle='full')} agree to ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})'s name change?
 subquestion: |
-  If ${children[i].main_other_parent.name.full(middle='full')} agrees to the name change, they will need to sign the name change request.
+  If ${children[i].main_other_parent.name.full(middle='full')} agrees to the name change, they will need to sign the name change request before a notary.
   
   If ${children[i].main_other_parent.name.full(middle='full')} cannot sign the name change request, you should select **No** here.
   
@@ -1661,6 +1661,10 @@ subquestion: |
   This program can put "**/s/ ${users[0].name.full(middle='full')}**" where you would sign your name. The court will accept this as your signature.
   
   If you do not add your **{e-signature}** now, you must sign your forms before you file them.
+  % if defined("notarized_signature"):
+  
+  Any other parent, guardian, or custodian who agrees with the name change will need to sign in front of a Notary Public.
+  % endif
   
   <div class="alert alert-info ilao-info" role="alert">
     <h6 class="alert-heading">What it means to sign your forms</h6>
