@@ -61,9 +61,9 @@ code: |
   nav.set_section('section_user')
   if user_is_adult == False:
     not_an_adult_kickout
-  if six_months_in_illinois == False:
+  if three_months_in_illinois == False:
     not_enough_illinois_kickout
-  if time_in_illinois.years < 0.5:
+  if time_in_illinois.years < 0.25:
     not_enough_illinois_kickout
   set_progress(20)
   users[0].name.first
@@ -127,7 +127,11 @@ code: |
     
   nav.set_section('section_filing')
   set_progress(80)
-  filing_county
+  case_county
+  impoundment_intro
+  if request_impoundment:
+    impoundment_reasons
+    motion_info
   #if trial_court_index == -1 and child_notice_would_be_published == True and (any_risk == False or request_waiver == False):
   #  cook_district
   #if child_notice_would_be_published == True and any_risk == False and request_waiver == False:
@@ -199,7 +203,7 @@ code: |
     if children[i].user_relationship == "other":
       not_parent_or_guardian_kickout
     else:
-      if children[i].age_in_years(decimals=True) >= 0.5 and not children[i].six_months_in_illinois:
+      if children[i].age_in_years(decimals=True) >= 0.25 and not children[i].three_months_in_illinois:
         children[i].six_month_kickout
       else:
         if children[i].user_relationship == "bio" or children[i].user_relationship == "adopt":
@@ -211,6 +215,7 @@ code: |
         children[i].pending_arrests
         children[i].pending_charges
         children[i].misdemeanors
+        children[i].misdemeanors_outside_il
         children[i].felonies
         children[i].registry
         if children[i].registry and children[i].registry_exceptions.all_false():
@@ -278,7 +283,7 @@ code: |
       
   children[i].parents[j].complete = True
 ---
-#Used to calculate the amount of time the user has been living in Illinois, which needs to be 6 months or more.
+#Used to calculate the amount of time the user has been living in Illinois, which needs to be three months or more.
 depends on:
   - started_living_in_illinois
 code: |
@@ -305,7 +310,7 @@ subquestion: |
   To change a child's name in Illinois: 
 
   * Your child must be under 18 years old, and 
-  * You must have lived in Illinois for at least 6 months.
+  * You must have lived in Illinois for at least three months.
   
   You will also need details if your child has a criminal history.
 
@@ -365,13 +370,13 @@ buttons:
   - Exit: exit
   - Restart: restart
 ---
-id: six months in illinois
+id: three months in illinois
 question: |
-  Have you lived continuously in Illinois for at least 6 months?
+  Have you lived continuously in Illinois for at least three months?
 subquestion: |
   ${collapse_template(live_continuously)}
 fields:
-  - no label: six_months_in_illinois
+  - no label: three_months_in_illinois
     datatype: yesnoradio
 ---
 template: live_continuously
@@ -385,19 +390,19 @@ event: not_enough_illinois_kickout
 question: |
   Sorry
 subquestion: |
-  You must have lived continuously in Illinois for at least 6 months to use this program.
+  You must have lived continuously in Illinois for at least three months to use this program.
   
   You can use the [**Legal Services Corporation website**](https://www.lsc.gov/about-lsc/what-legal-aid/get-legal-help) to find a legal aid organization in another state. Or you can use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
 buttons:
   - Exit: exit
   - Restart: restart
 ---
-id: child six month kickout
+id: child three month kickout
 continue button field: children[i].six_month_kickout
 question: |
   Sorry
 subquestion: |
-  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) must have lived in Illinois for at least 6 months to change their name in Illinois.
+  ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) must have lived in Illinois for at least three months to change their name in Illinois.
   
   You can use the [**Legal Services Corporation website**](https://www.lsc.gov/about-lsc/what-legal-aid/get-legal-help) to find a legal aid organization in another state. Or you can use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
   
@@ -482,13 +487,13 @@ fields:
     alMax: ${today().format("yyyy-MM-dd")}
     alMin: ${today().minus(years=18).format("yyyy-MM-dd")}
 ---
-id: child six months
+id: child three months
 question: |
-  Has ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) lived in Illinois for at least 6 months?
+  Has ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) lived in Illinois for at least three months?
 subquestion: |
   If ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')}) has lived in Illinois without taking a break to live in another state or country, click **Yes**.
 fields:
-  - no label: children[i].six_months_in_illinois
+  - no label: children[i].three_months_in_illinois
     datatype: yesnoradio
 ---
 id: child too old
@@ -612,6 +617,18 @@ fields:
     code: |
       name_suffix()
     required: False
+---
+#Do we need to include this question? Minors can be married and therefore can get divorced.
+id: name change after divorce
+question: |
+  IS ${children[i].new.name.full(middle='full')} (${children[i].name.full(middle='full')})} changing their name as a result of a divorce?
+subquestion: |
+  If their divorce judgment gives them permission to return to using their former or maiden name, you do not need to file a separate name change request. The divorce judgment should work as an effective court order to change identification.
+
+  You should be able to get a copy of their divorce judgment from the Circuit Clerk's office or website. For more information, see ILAO's article on [**How to get copies of your court records**](https://www.illinoislegalaid.org/node/33186).
+fields:
+  - no label: children[0].after_divorce
+    datatype: yesnoradio
 ---
 id: child birth address
 question: |
@@ -919,7 +936,7 @@ code: |
       child.skip = True
     elif child.user_relationship == "other":
       child.skip = True
-    elif child.age_in_years(decimals=True) >= 0.5 and not child.six_months_in_illinois:
+    elif child.age_in_years(decimals=True) >= 0.25 and not child.three_months_in_illinois:
       child.skip = True
     elif child.user_relationship == "bio" or child.user_relationship == "adopt":
       if child.no_parental_rights == True:
@@ -1197,12 +1214,12 @@ sets:
   - children[i].include_parents_zero_on_child_sheet
 reconsider: True
 code: |
-  any_under_six_months = False
+  any_under_three_months = False
   for child in children:
     child.include_parents_zero_on_child_sheet = False
     if not child.skip:
-      if child.age_in_years(decimals=True) < 0.5:
-        any_under_six_months = True
+      if child.age_in_years(decimals=True) < 0.25:
+        any_under_three_months = True
       if child.no_main_parent == False:
         child.include_parents_zero_on_child_sheet = False
         if child.main_other_parent.rights_terminated == False:
@@ -1541,6 +1558,14 @@ validation code: |
   else:
     trial_court = court_list.as_court('trial_court', trial_court_index)
 ---
+id: filing county
+question: |
+  Where will you file the name change?
+fields:
+  - County: case_county
+    code:
+      court_list._load_courts()["address_county"].unique()
+---
 code: |
   trial_court_index
   filing_county = trial_court.address.county
@@ -1586,14 +1611,128 @@ subject: |
 content: |  
   Visit **[Illinois Court Help](https://www.ilcourthelp.gov/)**, or you can call or text (833) 411-1121 for assistance.
 ---
+id: impoundment intro
+continue button field: impoundment_intro
+question: |
+  Keeping the name change court file private
+subquestion: |
+  You can ask that the court impound name change court files. This means the court records will be kept private. Only the people involved in the case, the judge, and the court clerk can see them unless the judge gives someone else permission.
+---
+id: impound records question
+question: |
+  Do you want to keep ${child_name_the_children}'s name change court file private?
+subquestion: |
+  You can ask to make a child's court file private if it would be a hardship for them and have a negative impact on their health or safety. This request is called a *Motion to Impound (Make Court Records Private)*.
+  
+  Some people are at higher risk of hardship if their name change court file is part of the public record. These include people who are:
+
+  * Transgender,
+  * Adoptees,
+  * Survivors of domestic or intimate partner violence,
+  * Survivors of gender-based violence,
+  * Survivors of human trafficking,
+  * Granted special immigrant status by the United States Citizenship and Immigration Service,
+  * Survivors of reparative or conversion therapy, and
+  * Granted asylum in this country.  
+
+fields:
+  - Want to keep the court file private?: request_impoundment
+    datatype: yesnoradio
+---
+reconsider: True
+code: |
+  if children.number_gathered() == 1:
+  
+    child_name_the_children = children[0].new.name.full(middle='full')
+    child_name_the_children += " ("
+    child_name_the_children += children[0].name.full(middle='full')
+    child_name_the_children += ")"
+
+    is_are = "is"
+
+  else:
+    child_name_the_children = "the children"
+
+    is_are = "are"
+---
+id: impoundment reasons
+question: |
+  Why do you want the name change court file to be private?
+subquestion: |
+  Your Motion will explain why making the court file public would be a hardship for ${child_name_the_children} and have a negative impact on their health or safety.
+
+  ${ collapse_template(hardship_categories) }
+
+fields:
+  - Having the court file public would be a hardship because (check all that apply):: impoundment_reasons
+    datatype: checkboxes
+    minlength: 1
+    choices:
+      - ${capitalize(child_name_the_children)} ${is_are} at higher risk of hardship based on their identity, experience, or status.: member
+        help: |
+          Some people are at higher risk of hardship if their name change court file is part of the public record. These include people who are:
+
+          * Transgender,
+          * Adoptees,
+          * Survivors of domestic or intimate partner violence,
+          * Survivors of gender-based violence,
+          * Survivors of human trafficking,
+          * Granted special immigrant status by the United States Citizenship and Immigration Service,
+          * Survivors of reparative or conversion therapy, and
+          * Granted asylum in this country.  
+      - ${child_name_the_children} have other reasons including fear of physical harm, discrimination, harassment, bullying, or threats of violence.: other
+    label above field: True
+    validation messages:
+      minlength: |
+        Please select at least one or click < Back if none apply.
+---
+template: hardship_categories
+subject: |
+  **Types of people who are at higher risk of hardship**
+content: |  
+  Some people are at higher risk of hardship if their name change court file is part of the public record. These include people who are:
+
+  * Transgender,
+  * Adoptees,
+  * Survivors of domestic or intimate partner violence,
+  * Survivors of gender-based violence,
+  * Survivors of human trafficking,
+  * Granted special immigrant status by the United States Citizenship and Immigration Service,
+  * Survivors of reparative or conversion therapy, and
+  * Granted asylum in this country.
+---
+id: cook filing info
+continue button field: cook_filing_info
+question: |
+  Special Cook County instructions
+subquestion: |
+  In Cook County, the Court requires all petitioners to e-file, as an exhibit, a photo or scanned copy of your birth certificate and a photo ID. If your photo ID does not have a Cook County address, you need to provide additional proof of address (such as a lease or a bill).
+  
+  **Note:** If your birth certificate is in a language other than English, the judge may ask you to provide a certified translation of your birth certificate. Birth certificates can usually be ordered from the agency in your state or country of birth that oversees vital records. If it is not possible for you to get a birth certificate, the court will likely ask you to provide additional documentation.
+  
+  You can redact any sensitive information. Save exhibits as a PDF file and be in portrait orientation.
+  
+  This information will be included on the instructions you download at the end of the program. If you have any questions about e-filing or paper filing, visit **[Illinois Court Help](https://www.ilcourthelp.gov/)**, or call or text (833) 411-1121 for assistance.  
+---
+id: motion to impound info
+continue button field: motion_info
+question: |
+  About the Motion to Impound
+subquestion: |
+  You should file or e-file your *Motion to Impound (Make Court Records Private)* at the same time as the name change request. The judge will review the Motion when they consider the name change request.
+
+  When you file your forms, you may attach supporting documents like court orders to help explain why it would be a hardship. Additional information is not required. The Motion should be enough.
+
+  **Note:** Until the Motion is granted or if the Motion is denied, the name change request will be a public record.
+---
 template: signature_help
 subject: |
   **What does it mean to sign the *Request for Name Change*?**
 content: |  
   By signing your *Request for Name Change*, you are certifying that:
   
-  * Everything on the form is true and correct, and
-  * You understand that making a false statement on the form is perjury, which can result in criminal penalties.
+  * Everything on the form is true and correct, or you have been informed or you believe it is true and correct, and
+  * You understand that making a false statement on the forms is perjury, and has penalties provided by law.
   
   See the [**Code of Civil Procedure, 735 ILCS 5/1-109**](https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm), for more information.
 ---
@@ -1713,7 +1852,7 @@ subquestion: |
   
   The Instructions have important information. You can read them to find out what to do next.
   
-  This program does not file your forms with the court. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
+  This program **does not file** your forms with the court. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
   
   ${ action_button_html(url_action('review_answers'), label=':edit: Make changes', color='success', size="md") }
 
@@ -1723,7 +1862,7 @@ subquestion: |
 
   ${ al_user_bundle.send_button_html(show_editable_checkbox=False) }
   
-  **Note:** This program **does not** file your forms. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
+  **Note:** This program **does not file** your forms. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
 
   Thank you for using ILAO Easy Forms!
 under: |
@@ -1752,6 +1891,8 @@ objects:
   - publication_notice: ALDocument.using(title = "Publication notice of court date", filename="publication_notice.pdf", has_addendum=False)
   #- order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
   - order: ALDocument.using(title = "Order for name change (minor name change)", filename="order.pdf", has_addendum=False)
+  - motion_to_impound: ALDocument.using(title="Motion to Impound", filename="motion_to_impound.pdf", has_addendum=False)
+  - order_to_impound: ALDocument.using(title="Order on Motion to Impound", filename="order_to_impound.pdf", has_addendum=False)
   #- motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 objects:
@@ -1825,15 +1966,20 @@ objects:
   - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
 ---
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, motion_to_impound, order_to_impound, change_order_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, motion_to_impound, order_to_impound, change_order_bundle], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
   request.enabled = True
   order.enabled = True
   additional_children.enabled = False
+  motion_to_impound.enabled = False
+  order_to_impound.enabled = False
   
+  if request_impoundment:
+    motion_to_impound.enabled = True
+    order_to_impound.enabled = True
   
   #The name change request form has space for 4 children. Any more children must be on the additional children template.
   if children.number_gathered() > 4:
@@ -1919,7 +2065,7 @@ attachment:
   editable: False
   pdf template file: Request_for_Name_Change_Minor.pdf
   fields:
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "one_child_old_first": ${children[0].name.first}
@@ -1950,7 +2096,7 @@ attachment:
     - "child_info_attached": ${True}
     #- "illinois_start_date": ${format_date(started_living_in_illinois, format='long')}
     - "e_signature": ${ users[0].name.full(middle='full') if e_signature == True else ""}
-    - "six_months": ${False if any_under_six_months else True}
+    - "six_months": ${False if any_under_three_months else True}
     - "user_address": ${users[0].address.on_one_line(bare=True)}
     - "user_phone": ${phone_number_formatted(users[0].phone_number)}
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
@@ -1966,7 +2112,7 @@ attachment:
   pdf template file: Request_for_Name_Change_Additional.pdf
   fields:
     - "case_number": ${""}
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name.full(middle='full')}
     - "child_old_first_5": ${children[4].name.first}
     - "child_old_middle_5": ${children[4].name.middle}
@@ -2020,7 +2166,7 @@ attachment:
   editable: False
   pdf template file: order_to_waive_notice.pdf
   fields:
-    - "trial_court_county": ${filing_county}
+    - "trial_court_county": ${case_county }
     - "user": ${ users[0].name.full(middle="full") }
 ---    
 generic object: ALIndividual
@@ -2032,7 +2178,7 @@ attachment:
   editable: False
   pdf template file: motion_to_waive_notice.pdf
   fields:      
-    - "trial_court_county": ${ trial_court.address.county.upper() }
+    - "trial_court_county": ${ case_county.upper() }
     - "user__1": ${ users[0].name.full(middle="full") }
     - "waiver_order_cb": ${ True if x.waiver_reason['order'] == True else '' }
     - "protective_order_op": ${ True if x.protective_order['op'] == True else '' }
@@ -2076,7 +2222,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "court_date": ${""}
@@ -2121,7 +2267,7 @@ attachment:
   editable: False
   pdf template file: Order_for_Name_Change_Minor.pdf
   fields:  
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
 ---
@@ -2133,7 +2279,7 @@ attachment:
   editable: True
   pdf template file: Publication_Notice_Minor2.pdf
   fields: 
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "child_old_name_1": ${published_children[0].name.full(middle='full')}
@@ -2216,7 +2362,7 @@ attachment:
   editable: False
   pdf template file: Request_for_Name_Change_Child_Information.pdf
   fields: 
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name.full(middle='full')}
     - "case_number": ${""}
     - "child_old_first": ${children[i].name.first}
@@ -2231,6 +2377,8 @@ attachment:
     - "user_is_recognized": ${ True if children[i].user_relationship == "years" else False}
     - "child_unpardoned_misdemeanor_true": ${True if children[i].misdemeanors == True and children[i].misdemeanor_pardon == False else False}
     - "child_unpardoned_misdemeanor_false": ${False if children[i].misdemeanors == True and children[i].misdemeanor_pardon == False else True}
+    - "child_out_state_misdemeanor_true": ${True if children[i].misdemeanors_outside_il == True and children[i].misdemeanor_outside_il_pardon == False else False}
+    - "child_out_state_misdemeanor_false": ${False if children[i].misdemeanors_outside_il == True and children[i].misdemeanor_outside_il_pardon == False else True}  
     - "child_arrest_true": ${ True if children[i].pending_arrests == True else False}
     - "child_arrest_false": ${ True if children[i].pending_arrests == False else False}
     - "child_pending_charge_true": ${ True if children[i].pending_charges == True else False}
@@ -2394,7 +2542,7 @@ attachment:
   editable: False
   pdf template file: name_change_additional_criminal_history.pdf
   fields:
-    - "trial_court_county": ${ filing_county }
+    - "trial_court_county": ${ case_county  }
     - "user__1": ${ children[i].name.full(middle='full') }
     - "user_offense_name_4": ${ children[i].convictions[3].name.text }
     - "user_conviction_date_4": ${ format_date(children[i].convictions[3].date, format='MM/dd/yyyy') }
@@ -2515,7 +2663,7 @@ attachment:
   fields: 
     - "case_number": ${""}
     - "user_name": ${ users[0].name.full(middle='full')}
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "is_parent_or_guardian": ${True if children[i].parents[j].parent_type != "Custodian" else False}
     - "is_custodian": ${True if children[i].parents[j].parent_type == "Custodian" else False}
     - "parental_first": ${children[i].parents[j].name.first}
@@ -2529,7 +2677,37 @@ attachment:
     - "disagrees": ${ True if children[i].parents[j].agree == False else False}
     - "dont_know": ${True if children[i].parents[j].agree is None else False}
     - "agrees": ${children[i].parents[j].agree}
-
+---
+attachment:
+  variable name: order_to_impound[i]
+  name: order_to_impound
+  filename: order_to_impound
+  skip undefined: True
+  editable: False
+  pdf template file: order_to_impound.pdf
+  fields:
+    - "trial_court_county": ${ case_county }
+    - "user": ${ users[0].name.full(middle="full") }
+---
+attachment:
+  variable name: motion_to_impound[i]
+  name: motion_to_impound
+  filename: motion_to_impound
+  skip undefined: True
+  editable: False
+  pdf template file: motion_to_impound.pdf
+  fields:      
+    - "trial_court_county": ${ case_county }
+    - "user__1": ${ users[0].name.full(middle="full") }
+    - "impoundment_reason_member": ${ impoundment_reasons['member'] }
+    - "impoundment_reason_other": ${ impoundment_reasons['other'] }
+    - "user_signature": ${ users[0].name.full(middle="full") if e_signature else '' }
+    - "user__2": ${ users[0].name.full(middle="full") }
+    - "user_address": ${ users[0].address.on_one_line(bare=True) }
+    - "user_hide_address_cb": ${ True if use_safe_address else '' }
+    - "user_phone": ${ phone_number_formatted(users[0].phone_number) }
+    - "user_atty_number": ${ '' }
+    - "user_email": ${ users[0].email if users[0].email_notice else '' }
 ---
 #The next questions will be in the shared yml, this is for testing purposes
 id: criminal history intro
@@ -2606,7 +2784,7 @@ fields:
   - no label: x[i].pending_charges
     datatype: yesnoradio
 ---
-id: misdemeanors
+id: misdemeanors in illinois
 generic object: ALPeopleList
 question: |
   % if interview_type == 'adult':
@@ -2616,10 +2794,10 @@ question: |
     Does your spouse have any convictions or were they placed on probation for any misdemeanors?
     % endif
   % else:
-  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any misdemeanor convictions or were they placed on probation for any misdemeanors?
+  Does ${x[i].new.name.full(middle='full')} (${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors in Illinois?
   % endif
 subquestion: |
-  These can be misdemeanors in Illinois or any other state.
+  We will ask about misdemeanors in other states on another screen.
 fields:
   - no label: x[i].misdemeanors
     datatype: yesnoradio
@@ -2627,6 +2805,29 @@ fields:
     datatype: yesnoradio
     show if:
       variable: x[i].misdemeanors
+      is: True
+---
+id: misdemeanors outside il
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+    % if i == 0:
+    Do you have any convictions or were you placed on probation for any misdemeanors outside Illinois?
+    % else:
+    Does your spouse have any convictions or were they placed on probation for any misdemeanors outside Illinois?
+    % endif
+  % else:
+  Does ${x[i].new.name.full(middle='full')} (AKA ${x[i].name.full(middle='full')}) have any convictions or were they placed on probation for any misdemeanors outside Illinois?
+  % endif
+subquestion: |
+  **Note:** These do not include misdemeanors in Illinois.
+fields:
+  - no label: x[i].misdemeanors_outside_il
+    datatype: yesnoradio
+  - Were all of these misdemeanors pardoned?: x[i].misdemeanor_outside_il_pardon
+    datatype: yesnoradio
+    show if:
+      variable: x[i].misdemeanors_outside_il
       is: True
 ---
 id: felonies
@@ -2976,14 +3177,18 @@ review:
       % for my_var in children:
         * ${ my_var.new.name.full(middle="full")} (${my_var.name.full(middle='full')})
       % endfor
-  - label: Edit
-    fields:
-      - trial_court_index
-      - recompute:
-        - filing_county
+  #- label: Edit
+  #  fields:
+  #    - trial_court_index
+  #    - recompute:
+  #      - filing_county
+  #  button: |
+  #    **Which county are you filing the name change in?**
+  #    ${end_in_county(filing_county)}
+  - Edit: case_county
     button: |
-      **Which county are you filing the name change in?**
-      ${end_in_county(filing_county)}
+      **County where you are filing your name change request:**
+      ${ case_county }
   #- Edit: cook_district
   #  button: |
   #    **In which Cook County courthouse is your case?**
@@ -3112,10 +3317,10 @@ review:
     button: |
       **Birth date:**
       ${x.birthdate}
-  - Edit: x.six_months_in_illinois
+  - Edit: x.three_months_in_illinois
     button: |
-      **Has ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) lived in Illinois for at least 6 months?**
-      ${word(yesno(x.six_months_in_illinois))}
+      **Has ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) lived in Illinois for at least three months?**
+      ${word(yesno(x.three_months_in_illinois))}
   - Edit: x.user_relationship
     button: |
       **Your relationship to ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}):**
@@ -3178,11 +3383,23 @@ review:
       ${word(yesno(x.pending_charges))}
   - Edit: x.misdemeanors
     button: |
-      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any misdemeanor convictions or were they placed on probation for any misdemeanors?**
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any misdemeanor convictions or were they placed on probation for any misdemeanors in Illinois?**
       % if x.misdemeanors == False:
       No
       % else:
       % if x.misdemeanor_pardon == True:
+      Yes, and they have been pardoned of them.
+      % else:
+      Yes, and they have not been pardoned for all of them.
+      % endif
+      % endif
+  - Edit: x.misdemeanors_outside_il
+    button: |
+      **Does ${x.new.name.full(middle='full')} (${x.name.full(middle='full')}) have any misdemeanor convictions or were they placed on probation for any misdemeanors outside of Illinois?**
+      % if x.misdemeanors_outside_il == False:
+      No
+      % else:
+      % if x.misdemeanor_outside_il_pardon == True:
       Yes, and they have been pardoned of them.
       % else:
       Yes, and they have not been pardoned for all of them.
@@ -3556,14 +3773,18 @@ question: |
 subquestion: |
   Edit your answers below.
 review:
-  - label: Edit
-    fields:
-      - trial_court_index
-      - recompute:
-        - filing_county
+  #- label: Edit
+  #  fields:
+  #    - trial_court_index
+  #    - recompute:
+  #      - filing_county
+  #  button: |
+  #    **Which county are you filing the name change in?**
+  #    ${end_in_county(filing_county)}
+  - Edit: case_county
     button: |
-      **Which county are you filing the name change in?**
-      ${end_in_county(filing_county)}
+      **County where you are filing your name change request:**
+      ${ case_county }
   #- Edit: cook_district
   #  button: |
   #    **In which Cook County courthouse is your case?**
