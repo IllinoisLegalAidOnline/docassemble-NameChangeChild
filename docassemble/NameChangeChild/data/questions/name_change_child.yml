@@ -126,8 +126,11 @@ code: |
   #  hardship_text
     
   nav.set_section('section_filing')
+  
   set_progress(80)
   case_county
+  if case_county == "Cook":
+    cook_filing_info
   impoundment_intro
   if request_impoundment:
     impoundment_reasons
@@ -1647,13 +1650,17 @@ code: |
     child_name_the_children += " ("
     child_name_the_children += children[0].name.full(middle='full')
     child_name_the_children += ")"
-
+    has_have = "has"
     is_are = "is"
+    child_children = "child"
+    pluralize = ""
 
   else:
     child_name_the_children = "the children"
-
+    has_have = "have"
     is_are = "are"
+    child_children = "children"
+    pluralize = "s"
 ---
 id: impoundment reasons
 question: |
@@ -1680,7 +1687,7 @@ fields:
           * Granted special immigrant status by the United States Citizenship and Immigration Service,
           * Survivors of reparative or conversion therapy, and
           * Granted asylum in this country.  
-      - ${child_name_the_children} have other reasons including fear of physical harm, discrimination, harassment, bullying, or threats of violence.: other
+      - ${capitalize(child_name_the_children)} ${has_have} other reasons including fear of physical harm, discrimination, harassment, bullying, or threats of violence.: other
     label above field: True
     validation messages:
       minlength: |
@@ -1706,9 +1713,9 @@ continue button field: cook_filing_info
 question: |
   Special Cook County instructions
 subquestion: |
-  In Cook County, the Court requires all petitioners to e-file, as an exhibit, a photo or scanned copy of your birth certificate and a photo ID. If your photo ID does not have a Cook County address, you need to provide additional proof of address (such as a lease or a bill).
+  In Cook County, the Court requires all petitioners to e-file, as an exhibit, a photo or scanned copy of the ${child_children}'s birth certificate${pluralize} and photo ID${pluralize}. If the ${child_children}'s photo ID${pluralize} does not have a Cook County address, you need to provide additional proof of address (such as a lease or a bill).
   
-  **Note:** If your birth certificate is in a language other than English, the judge may ask you to provide a certified translation of your birth certificate. Birth certificates can usually be ordered from the agency in your state or country of birth that oversees vital records. If it is not possible for you to get a birth certificate, the court will likely ask you to provide additional documentation.
+  **Note:** If the ${child_children}'s birth certificate${pluralize} ${is_are} in a language other than English, the judge may ask you to provide a certified translation of the birth certificate${pluralize}. Birth certificates can usually be ordered from the agency in the ${child_children}'s state or country of birth that oversees vital records. If it is not possible for you to get a birth certificate, the court will likely ask you to provide additional documentation.
   
   You can redact any sensitive information. Save exhibits as a PDF file and be in portrait orientation.
   
