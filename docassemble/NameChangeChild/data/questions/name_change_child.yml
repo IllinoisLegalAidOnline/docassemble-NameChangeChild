@@ -63,8 +63,8 @@ code: |
     not_an_adult_kickout
   if three_months_in_illinois == False:
     not_enough_illinois_kickout
-  if time_in_illinois.years < 0.25:
-    not_enough_illinois_kickout
+  #if time_in_illinois.years < 0.25:
+  #  not_enough_illinois_kickout
   set_progress(20)
   users[0].name.first
   use_safe_address
