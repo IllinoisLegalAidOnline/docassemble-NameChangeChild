@@ -87,41 +87,18 @@ code: |
         if child.main_other_parent.rights_terminated == False:
           if child.main_other_parent.agree == True:
             notarized_signature
-        #  else:
-            #notice_waiver_info
-            #child.main_other_parent.risk_check
-            ##if child.main_other_parent.risk_check == False:
-            #  if child.main_other_parent.address_known == True:
-            #    child.main_other_parent.receive_method
-            #  else:
-            #    published_notice_info
+
       if child.any_other_parents == True:
         interview_parent_index = 0
         while interview_parent_index < child.parents.number_gathered():
           if child.parents[interview_parent_index].parent_type != "Parent" or child.parents[interview_parent_index].rights_terminated == False:
             if child.parents[interview_parent_index].agree == True:
               notarized_signature
-            #else:
-              #notice_waiver_info
-              #child.parents[interview_parent_index].risk_check
-              #if child.parents[interview_parent_index].risk_check == False:
-              #  if child.parents[interview_parent_index].address_known == True:
-               #   child.parents[interview_parent_index].receive_method
+
 
           interview_parent_index += 1
-      #child.waiver_code_block    
   waiver_reason_logic
   set_progress(60)
-
-  #If any parent who needs to be notified poses a risk or if notice by publication would be required but could cause the child a hardship, the questions around motion to waive notice/publication should be asked.
-  #if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
-  #  note_about_waiver
-  #  if waiver_reason['order'] == True:
-  #    if protective_order.any_true():
-  #      order_against_parents
-  #      orders.gather()
-  #  #Following if statement is commented out as the hardship field on the form is available to anyone requesting a waiver.
-  #  hardship_text
     
   nav.set_section('section_filing')
   
@@ -135,25 +112,16 @@ code: |
     motion_info
   e_signature
     
-  #if any_to_notify == True:
-  #  complete_notice
-  #elif child_notice_would_be_published and not any_risk:
-  #  if not any_pubish_waiver_requested:
-  #    complete_notice
   if any_to_notify == True:
-    #notice_reminder
     about_notice_statement
   set_progress(100)
   nav.set_section('section_download')
-  #enabled_enabler
-  #parents_zero_debug
   pop_skipped_children
   parent_on_child_sheet_logic
   waiver_reason_logic
   refresh_bundles
   if any_to_notify:
     refresh_notice_bundle
-  #template_variable_logic
   forms_assembling
   
   snapshot_forms
@@ -234,13 +202,9 @@ code: |
         else:
           children[i].use_safe_address = False
           children[i].address.address
-      
-    #The way the forms are designed, they allow for a given child to have, in addition to the user, one other parent, one other guardian, and one other custodian. As such, the current program only allows for a the parents list associated with a given child to have 3 entries: 0 for parent, 1 for guardian, and 2 for custodian. Pending SME review, this may be retooled to allow for over 3 parental units per child. Why does this code code block go through each parents[i] individually instead of looping them? Because the program wants to keep a given parent type associated with a specific index. This probably could be done more efficiently with a loop, but I foolishly didn't set it up that way.
-      #if children[i].include_other_parent == True: 
-      #  children[i].parents[0].name.first
         about_other_parentals
         if children[i].no_main_parent == False:
-          
+          children[i].main_other_parent.agree
           children[i].main_other_parent.rights_terminated
           if children[i].main_other_parent.address_known == True:
             children[i].main_other_parent.address.address
@@ -263,19 +227,10 @@ code: |
       children[i].parents[j].name.first
       if children[i].parents[j].parent_type == "Parent":
         children[i].parents[j].rights_terminated
-      #if children[i].parents[j].agree == True: 
-        #children[i].parents[j].notarized_signature
+      children[i].parents[j].agree
       if children[i].parents[j].address_known == True:
         children[i].parents[j].address.address
-      #if children[i].parents[j].agree != True:
-        #children[i].parents[j].notice_waiver_info  
-        #if children[i].parents[j].risk_check == False:
-          #if children[i].parents[j].address_known == True:
-            #children[i].parents[j].receive_method 
-        #if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
-          #children[i].parents[j].published_notice_info 
-        #elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
-          #children[i].parents[j].published_notice_info 
+      
     else:
       children[i].parents.there_is_another = False
       
@@ -740,7 +695,7 @@ question: |
 subquestion: |
   If your child's other parents, guardians, and custodians agree to your child's name change, they will need to sign the name change request before a notary.
 
-  If any of them do not agree to the name change, you will need to notify them of the name change request. However, you may ask the court to not require you to notify them. Courts usually do not require notification if it could risk hardship for the child.
+  If any of them do not agree to the name change, you will need to notify them of the name change request. If you are not able to notify them, you will need to tell the court why you couldn't.
 ---
 #id: child other parent
 #question: |
@@ -964,8 +919,7 @@ code: |
   parent_count = 0
   
   #The following variables are used as flags. 
-  #child_notice_would_be_published should be set to True if two conditions are met. 1. A parent does not agree to the name change (or their agrement is unknown) 2. The user does not know their address.
-  #any_risk tracks should be True if there is at least one parent who does not agree to the name change and may pose a risk to the child.
+
   # any_to_notify should be True if there is at least one parent who does not agree to the name change and does not pose a risk to the child.
   any_to_notify = False
   #In addition to setting the above flags to True if necessary, this for loop also generates the parent_list_generator object.
@@ -988,19 +942,17 @@ code: |
             any_to_notify = True
             child.any_to_notify = True
       
-              
-              #child.main_other_parent.receive_method 
             
             if child.main_other_parent.address_known == True:
               child.main_other_parent.address.address
-              already_included = False
-              if parent_list_generator.number_gathered() > 0:                  
-                for item in parent_list_generator:
-                  if child.main_other_parent.name_full() == item.name_full():
-                    if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
-                        already_included = True                      
-              if already_included == False:
-                parent_list_generator.append(child.main_other_parent)
+            already_included = False
+            if parent_list_generator.number_gathered() > 0:                  
+              for item in parent_list_generator:
+                if child.main_other_parent.name_full() == item.name_full():
+                  if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                      already_included = True                      
+            if already_included == False:
+              parent_list_generator.append(child.main_other_parent)
           else:  
              notarized_signature
       
@@ -1008,7 +960,7 @@ code: |
         if child.parents.number_gathered() > 0:
           for parent in child.parents:
             #The following if statement is just included to ensure the parent address block is triggered if parent.address_known is set to true via review screen.
-            if parent.rights_terminated == False:
+            if parent.parent_type != "Parent" or parent.rights_terminated == False:
               if parent.address_known == True:
                 parent.address.address
               if parent.agree != True:              
@@ -1808,7 +1760,6 @@ code: |
   if children.number_gathered() > 4:
     additional_children.enabled = True
 
-  #notices.enabled = False
   
   #For some reason the program doesn't always behave unless I set this enabled value to True outside of the for loop. 
   if children.there_are_any and children.number_gathered() > 0:
@@ -1859,27 +1810,8 @@ code: |
                 child.has_guardian = True
             type_check_index += 1
         else:
-          child.parents[0].parent_info_sheet.enabled = False
-        
-        
-  #motion_to_waive_notice.enabled = False
-  #order_to_waive_notice.enabled = False
-  
+          child.parents[0].parent_info_sheet.enabled = False  
   publication_notice.enabled = False
-  
-  #for child in children:
-  #  child.motion_to_waive_notice.enabled = False
-  #
-  #if any_risk == True or (child_notice_would_be_published == True and showifdef('any_pubish_waiver_requested') == True):
-    #for child in children:
-    #  if not child.skip:
-    #    if child.other_parent_status == "has_other_parent" or child.any_other_parents:
-    #      if showifdef('child.any_risk') == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
-    #        child.motion_to_waive_notice.enabled = True
-    #order_to_waive_notice.enabled = True
-  #for child in children:
-  #  if include_publication_notice == True and showifdef('child.request_waiver') != True:
-  #    publication_notice.enabled = True
 ---
 attachment:
   variable name: instructions[i]
@@ -2336,20 +2268,22 @@ attachment:
     - "third_parent_true": ${children[i].has_guardian}
     - "custodian_true": ${children[i].has_custodian}
     - "custodian_false": ${ True if children[i].has_custodian == False else False}
-    - "other_parent_mail": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.receive_method == "mail" or children[i].main_other_parent.receive_method == "sheriff":
-        ${True}
-        % else:
-        ${False}
-        % endif
-        % elif children[i].include_parents_zero_on_child_sheet:
-        % if children[i].parents[0].receive_method == "mail" or children[i].parents[0].receive_method == "sheriff":
-        ${True}
-        % else:
-        ${False}
-        % endif
-        % endif
+    - "other_parent_mail": ${False}
+    #I changed other_parent_mail to always be False, so the user can check the box or the "i was unable to provide notice" box based on their ability to provide notice.
+    #- "other_parent_mail": |
+    #    % if children[i].include_main_parent_on_child_sheet == True:
+    #    % if children[i].main_other_parent.receive_method == "mail" or children[i].main_other_parent.receive_method == "sheriff":
+    #    ${True}
+    #    % else:
+    #    ${False}
+    #    % endif
+    #    % elif children[i].include_parents_zero_on_child_sheet:
+    #    % if children[i].parents[0].receive_method == "mail" or children[i].parents[0].receive_method == "sheriff":
+    #    ${True}
+    #    % else:
+    #    ${False}
+    #    % endif
+    #    % endif
     #Set up following variable once Statement on trying to provide notice
     - "other_parent_missing": ${False}
     - "other_parent_terminated": |
