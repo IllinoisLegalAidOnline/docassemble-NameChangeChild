@@ -8,7 +8,6 @@ metadata:
 ---
 include:
   - docassemble.AssemblyLine:assembly_line.yml
-  - docassemble.ALToolbox:phone-number-validation.yml
   - docassemble.ILAO:ilao-interview-framework.yml
   - docassemble.ILAO:shared-basic-questions.yml
 ---
@@ -99,6 +98,8 @@ code: |
           interview_parent_index += 1
   waiver_reason_logic
   set_progress(60)
+  if any_to_notify == True:
+    about_notice_statement
     
   nav.set_section('section_filing')
   
@@ -112,8 +113,7 @@ code: |
     motion_info
   e_signature
     
-  if any_to_notify == True:
-    about_notice_statement
+  
   set_progress(100)
   nav.set_section('section_download')
   pop_skipped_children
@@ -1591,6 +1591,8 @@ subquestion: |
   If you are unable to give them notice, or if giving them notice would be dangerous, you will need to give the court a *Statement on Trying to Provide Notice* form. You can use this form to tell the court how you tried to give the person notice or why it would be dangerous to do so.
 
   This program will make you a mostly blank *Statement on Trying to Provide Notice*. If you are not able to give someone notice, you may need to complete the form and give it to the court.
+
+  You will also need to say whether you served them on the *Child Information* form.
 
   If there is more than one person you are unable to give notice to, you will need a *Statement* form for each one.
 ---
