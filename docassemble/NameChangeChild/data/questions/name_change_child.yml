@@ -2087,7 +2087,7 @@ attachment:
   name: child_information
   filename: child_information
   skip undefined: True
-  editable: False
+  editable: True
   pdf template file: Request_for_Name_Change_Child_Information.pdf
   fields: 
     - "filing_county": ${case_county }
@@ -2270,7 +2270,12 @@ attachment:
     - "third_parent_true": ${children[i].has_guardian}
     - "custodian_true": ${children[i].has_custodian}
     - "custodian_false": ${ True if children[i].has_custodian == False else False}
-    - "other_parent_mail": ${False}
+    - "other_parent_mail": |
+        % if children[i].include_main_parent_on_child_sheet and not children[i].main_other_parent.agree:
+        ${children[i].main_other_parent.address_known}
+        % elif children[i].include_parents_zero_on_child_sheet and not children[i].parents[0].agree:
+        ${children[i].parents[0].address_known}
+        % endif
     #I changed other_parent_mail to always be False, so the user can check the box or the "i was unable to provide notice" box based on their ability to provide notice.
     #- "other_parent_mail": |
     #    % if children[i].include_main_parent_on_child_sheet == True:
@@ -2287,12 +2292,21 @@ attachment:
     #    % endif
     #    % endif
     #Set up following variable once Statement on trying to provide notice
-    - "other_parent_missing": ${False}
+    - "other_parent_missing": |
+        % if children[i].include_main_parent_on_child_sheet and not children[i].main_other_parent.agree:
+        % if not children[i].main_other_parent.address_known:
+        ${True}
+        % endif
+        % elif children[i].include_parents_zero_on_child_sheet and not children[i].parents[0].agree:
+        % if not children[i].parents[0].address_known:
+        ${True}
+        % endif
+        % endif
     - "other_parent_terminated": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        ${children[i].main_other_parent.rights_terminated}
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        ${children[i].parents[0].rights_terminated}
+        % if not children[i].include_parents_zero_on_child_sheet: 
+        ${children[0].main_other_parent.rights_terminated}
+        % else:
+        ${children[0].parents[0].rights_terminated}
         % endif
 ---
 #The fields in this pdf template refer to "user" because it is pulled from the adult name change program. In this program, the form represents the child's additional criminal history, not the user's.
