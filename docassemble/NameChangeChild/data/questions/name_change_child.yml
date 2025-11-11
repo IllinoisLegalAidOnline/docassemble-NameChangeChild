@@ -204,8 +204,9 @@ code: |
           children[i].address.address
         about_other_parentals
         if children[i].no_main_parent == False:
-          children[i].main_other_parent.agree
-          children[i].main_other_parent.rights_terminated
+          if not children[i].main_other_parent.rights_terminated:
+            children[i].main_other_parent.agree
+          
           if children[i].main_other_parent.address_known == True:
             children[i].main_other_parent.address.address
         elif children[i].other_parent_status == "deceased_parent":
@@ -227,7 +228,8 @@ code: |
       children[i].parents[j].name.first
       if children[i].parents[j].parent_type == "Parent":
         children[i].parents[j].rights_terminated
-      children[i].parents[j].agree
+      if children[i].parents[j].parent_type != "Parent" or not children[i].parents[j].rights_terminated:
+        children[i].parents[j].agree
       if children[i].parents[j].address_known == True:
         children[i].parents[j].address.address
       
@@ -995,7 +997,7 @@ code: |
         any_under_three_months = True
       if child.no_main_parent == False:
         child.include_parents_zero_on_child_sheet = False
-        if child.main_other_parent.rights_terminated == False:
+        if child.other_parent_status != "deceased_parent":
           child.include_main_parent_on_child_sheet = True
         else:
           child.include_main_parent_on_child_sheet = False
@@ -1003,7 +1005,7 @@ code: |
         child.include_main_parent_on_child_sheet = False
         if child.any_other_parents == True:
           if child.parents[0].parent_type == "Parent":
-            if child.parents[0].rights_terminated == False and child.other_parent_status != "deceased_parent":
+            if child.other_parent_status != "deceased_parent":
               child.include_parents_zero_on_child_sheet = True
             else:
               child.include_parents_zero_on_child_sheet = False
@@ -1339,29 +1341,6 @@ fields:
     code:
       court_list._load_courts()["address_county"].unique()
 ---
-code: |
-  trial_court_index
-  filing_county = trial_court.address.county
----
-depends on:
-  - trial_court_index
-  - cook_district
-code: |
-  if trial_court_index == -1:
-    #I commented out the line normally used in this sort of code block and manually put in 15 instead. This sets the trial_court object to the Daley Center for any user filing in Cook County. Why did I do this? Because the courthouse address is not used in this program, this code block is only being used due to our standardization of the county blocks. If you need to reintroduce courthouse addresses in an update, reimplement the "trial_court = court_list.as_court('trial_court', cook_district)" line. You'll also want to reactivate the corresponding review screen buttons.
-    #trial_court = court_list.as_court('trial_court', cook_district)
-    trial_court = court_list.as_court('trial_court', 15)
-  else:
-    trial_court = court_list.as_court('trial_court', trial_court_index)
-    
-  court_name = str(trial_court.name)
-  court_street_address = str(trial_court.address.address)
-  court_city = str(trial_court.address.city)
-  court_state = str(trial_court.address.state)
-  court_zip = str(trial_court.address.zip)
-  filing_county = str(trial_court.address.county)
-  courthouse_info = court_name + ", " + court_street_address + ", " + court_city + ", " + court_state + " " + court_zip
----
 id: Cook County district
 question: |
   In which Cook County courthouse is your case?
@@ -1567,11 +1546,10 @@ subquestion: |
     <p>By signing your <i>Small Claims Complaint</i>, you are certifying that:
   <p>
   <p><ul>
-  <li>You read the document,</li>
-  <li>You believe it to be true and correct, and</li>
-  <li>You are not filing it for an improper purpose.</li>
+  <li>Everything on the forms is true and correct, or you have been informed or believe it to be true and correct, and</li>
+  <li>You understand that making a false statement on the forms is perjury and has penalties provided by law.</li>
   </ul><p>
-  <p>See the <a href="https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm"><b>Code of Civil Procedure, 735 ILCS 5/1-109</b></a> for more information.</p>
+  <p>See the <a href="https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm"><b>Illinois Code of Civil Procedure, 735 ILCS 5/1-109</b></a> for more information.</p>
   </div>
 field: e_signature
 choices:
@@ -1584,15 +1562,17 @@ terms:
 id: about notice statement
 continue button field: about_notice_statement
 question: |
-  About the *Statement on Trying to Provide Notice*
+  Giving notice of the name change
 subquestion: |
-  Basd on your answers, you will try to give someone notice about the name change hearing.
+  Based on your answers, you need to give another parent, guardian, or custodian notice about the name change hearing. You can send them notice by certified mail, or you can have a sheriff give them notice. 
+  
+  This program will make you a mostly blank *Letter to the Sheriff*. You can use this form to ask a sheriff to serve notice in their county.
 
-  If you are unable to give them notice, or if giving them notice would be dangerous, you will need to give the court a *Statement on Trying to Provide Notice* form. You can use this form to tell the court how you tried to give the person notice or why it would be dangerous to do so.
+  If you do not know where the parent, guardian, or custodian is, you should try to find them. You could send mail to their last known address, look them up on the internet, or ask their family or friends where they are.
+
+  If you cannot find them, you will need to give the court a *Statement on Trying to Provide Notice* form. You can use this form to tell the court how you tried to give the person notice, or why it would be dangerous to do so.
 
   This program will make you a mostly blank *Statement on Trying to Provide Notice*. If you are not able to give someone notice, you may need to complete the form and give it to the court.
-
-  You will also need to say whether you served them on the *Child Information* form.
 
   If there is more than one person you are unable to give notice to, you will need a *Statement* form for each one.
 ---
@@ -1682,8 +1662,6 @@ code: |
   
   for index, child in enumerate(children):
     child.elements_for_additional_parents_bundle = []
-    #child.motion_to_waive_notice.enabled = False
-    #child.order_to_waive_notice.enabled = False
     if not child.skip:
       for index, parent in enumerate(child.parents):
         child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet) 
@@ -1735,14 +1713,14 @@ objects:
 #  - all_criminal_addendums: ALDocumentBundle.using(elements=[item.additional_criminal_history for item in children], filename="additional_criminal_history.pdf", title = "Additional criminal history", enabled = True)
 ---
 objects:
-  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change (1 for each child)", has_addendum=False, enabled=True)
+  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_forms.pdf", title = "Order for name change (1 for each child)", has_addendum=False, enabled=True)
 ---
 objects:
-  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
+  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_forms.pdf", title="Request for name change", enabled=True) 
 ---
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, motion_to_impound, order_to_impound, change_order_bundle, notice_statement, sheriff_letter], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, motion_to_impound, order_to_impound, change_order_bundle, notice_statement, sheriff_letter], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, notice_statement, sheriff_letter, change_order_bundle, motion_to_impound, order_to_impound], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, notice_statement, sheriff_letter, change_order_bundle, motion_to_impound, order_to_impound], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
@@ -1782,7 +1760,7 @@ code: |
       else:
         child.child_information.enabled = True
         if child.other_parent_status == "has_other_parent":
-          if not child.main_other_parent.agree:
+          if not child.main_other_parent.rights_terminated and not child.main_other_parent.agree:
             child.notice_of_court_date.enabled = True
             notice_statement.enabled = True
             sheriff_letter.enabled = True      
@@ -1801,7 +1779,7 @@ code: |
             else:
               child.parents[type_check_index].parent_info_sheet.enabled = True
                 
-              if not child.parents[type_check_index].agree:
+              if not (child.parents[type_check_index].parent_type == "Parent" and child.parents[type_check_index].rights_terminated) and not child.parents[type_check_index].agree:
                 child.notice_of_court_date.enabled = True
                 notice_statement.enabled = True
                 sheriff_letter.enabled = True
@@ -2150,11 +2128,13 @@ attachment:
         % if children[i].include_parents_zero_on_child_sheet:
         ${False}
         % elif children[i].include_main_parent_on_child_sheet:
-        ${False}
-        % elif children[i].other_parent_status == "deceased_parent":
-        ${False}
-        % else:
+        % if children[i].other_parent_status == "no_other_parent":
         ${True}
+        % else:
+        ${False}
+        % endif
+        % else:
+        ${False}
         % endif
     - "dead_other_parent": ${True if children[i].other_parent_status == "deceased_parent" else False}
     #Next field commented out pending SME review  
@@ -2304,9 +2284,9 @@ attachment:
         % endif
     - "other_parent_terminated": |
         % if not children[i].include_parents_zero_on_child_sheet: 
-        ${children[0].main_other_parent.rights_terminated}
+        ${children[i].main_other_parent.rights_terminated}
         % else:
-        ${children[0].parents[0].rights_terminated}
+        ${children[i].parents[0].rights_terminated}
         % endif
 ---
 #The fields in this pdf template refer to "user" because it is pulled from the adult name change program. In this program, the form represents the child's additional criminal history, not the user's.
@@ -2492,7 +2472,7 @@ attachment:
   name: sheriff_letter
   filename: sheriff_letter
   skip undefined: True
-  editable: False
+  editable: True
   pdf template file: sheriff_letter_child_name.pdf
   fields:    
     - "letter_date": ${""}
@@ -2520,7 +2500,7 @@ attachment:
   editable: True
   pdf template file: statement_to_provide_notice.pdf
   fields:    
-    - "county":
+    - "county": ${case_county}
     - "user_name": ${users[0].name_full()}
     - "user_name_2": ${users[0].name_full()}
     - "case_number_1": ${""}
@@ -2951,9 +2931,15 @@ question: |
   Does ${children[i].new.name_full()} (${children[i].name_full()}) have another parent, guardian, or custodian?
 subquestion: |
   % if children[i].no_main_parent == False:
-  So far you have told us about ${comma_and_list(children[i].main_other_parent, children[i].parents)}.
+  % if children[i].parents.number_gathered() == 1:
+  So far you told us about ${children[i].main_other_parent.name_full()} and ${children[i].parents[0].name_full()}.
+  % elif children[i].parents.number_gathered() == 2:
+  So far you told us about ${children[i].main_other_parent.name_full()}, ${children[i].parents[0].name_full()}, and ${children[i].parents[1].name_full()}.
   % else:
-  So far you have told us about ${comma_and_list(children[i].parents)}.
+  So far you told us about ${children[i].main_other_parent}, ${children[i].parents.full_names()}.
+  % endif
+  % else:
+  So far you told us about ${children[i].parents.full_names()}.
   % endif
 fields:
   - no label: children[i].parents.there_is_another
