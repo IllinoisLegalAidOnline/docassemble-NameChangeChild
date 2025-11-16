@@ -880,6 +880,8 @@ question: |
    Are you worried that giving notice of the name change request to ${children[i].parents[j].name_full()} could be a safety issue?
 subquestion: |
   ${collapse_template(notice_explainer)}
+
+  If you do not want to give notice to ${children[i].parents[j].name_full()} for safety reasons, you will need to tell the judge why. You will also need to give the court a *Statement on Trying to Provide Notice*.
 fields:
   - no label: children[i].parents[j].risk_check
     datatype: yesnoradio
@@ -889,13 +891,15 @@ question: |
    Are you worried that giving notice of the name change request to ${children[i].main_other_parent.name_full()} could be a safety issue?
 subquestion: |
   ${collapse_template(notice_explainer)}
+
+  If you do not want to give notice to ${children[i].main_other_parent.name_full()} for safety reasons, you will need to tell the judge why. You will also need to give the court a *Statement on Trying to Provide Notice*.
 fields:
   - no label: children[i].main_other_parent.risk_check
     datatype: yesnoradio
 ---
 template: notice_explainer
 subject: |
-  **What is "giving notice?"**
+  **Learn about "giving notice"**
 content: |
   Notice is the way you tell other parents and guardians about the name change and court dates.
   
@@ -959,7 +963,7 @@ code: |
             
             if child.main_other_parent.address_known == True:
               child.main_other_parent.address.address
-            elif not child.main_other_parent.risk_check:
+            elif child.main_other_parent.risk_check:
               includes_notice_statement = True
             already_included = False
             if parent_list_generator.number_gathered() > 0:                  
@@ -979,7 +983,7 @@ code: |
             if parent.parent_type != "Parent" or parent.rights_terminated == False:
               if parent.address_known == True:
                 parent.address.address
-              elif not parent.risk_check:
+              elif parent.risk_check:
                 includes_notice_statement = True
               if parent.agree != True:              
                 
@@ -1799,7 +1803,9 @@ code: |
           while type_check_index < child.parents.number_gathered():
             if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
               child.parents[type_check_index].parent_info_sheet.enabled = False
-            elif not child.parents[type_check_index].rights_terminated:
+            elif child.parents[type_check_index].rights_terminated:
+              child.parents[type_check_index].parent_info_sheet.enabled = False
+            else:
               child.parents[type_check_index].parent_info_sheet.enabled = True
                 
               if not (child.parents[type_check_index].parent_type == "Parent" and child.parents[type_check_index].rights_terminated) and not child.parents[type_check_index].agree:
