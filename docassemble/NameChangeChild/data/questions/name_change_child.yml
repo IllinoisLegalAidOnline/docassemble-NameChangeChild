@@ -153,9 +153,9 @@ code: |
   
   stuff_to_snapshot['number_of_children_excluded'] = showifdef('excluded_children_count')
 
-  stuff_to_snapshot['need_to_notify_someone'] = showifdef('any_to_notify')
+  stuff_to_snapshot['other_parent_no_agree_or_idk_agree'] = showifdef('any_to_notify')
 
-  stuff_to_snapshot['includes_notice_statement'] = showifdef('includes_notice_statement')
+  stuff_to_snapshot['includes_statement_on_notice'] = showifdef('includes_notice_statement')
   
   store_variables_snapshot(
   	data=stuff_to_snapshot, persistent=True
@@ -875,13 +875,13 @@ subquestion: |
   You can ask the court to waive (skip) this notice if you believe that notice or publication would put your child at risk of physical harm or discrimination.
 ---
 #I had to make a duplicate of this question for the other_main_parent object since this question pulls the specific child's name.
-id: other parent risk check
+id: other parents risk check
 question: |
    Are you worried that giving notice of the name change request to ${children[i].parents[j].name_full()} could be a safety issue?
 subquestion: |
   ${collapse_template(notice_explainer)}
 
-  If you do not want to give notice to ${children[i].parents[j].name_full()} for safety reasons, you will need to tell the judge why. You will also need to give the court a *Statement on Trying to Provide Notice*.
+  If you do not want to give notice to ${children[i].parents[j].name_full()} for safety reasons, you will need to tell the judge why. You can explain in a *Statement on Trying to Provide Notice*. You can download this form at the end of this program with instructions on how to use it. 
 fields:
   - no label: children[i].parents[j].risk_check
     datatype: yesnoradio
@@ -892,7 +892,7 @@ question: |
 subquestion: |
   ${collapse_template(notice_explainer)}
 
-  If you do not want to give notice to ${children[i].main_other_parent.name_full()} for safety reasons, you will need to tell the judge why. You will also need to give the court a *Statement on Trying to Provide Notice*.
+  If you do not want to give notice to ${children[i].main_other_parent.name_full()} for safety reasons, you will need to tell the judge why. You can explain in a *Statement on Trying to Provide Notice*. You can download this form at the end of this program with instructions on how to use it. 
 fields:
   - no label: children[i].main_other_parent.risk_check
     datatype: yesnoradio
