@@ -153,7 +153,7 @@ code: |
   
   stuff_to_snapshot['number_of_children_excluded'] = showifdef('excluded_children_count')
 
-  stuff_to_snapshot['other_parent_no_agree_or_idk_agree'] = showifdef('any_to_notify')
+  stuff_to_snapshot['other_parental_figure_no_agree_or_idk_agree'] = showifdef('any_to_notify')
 
   stuff_to_snapshot['includes_statement_on_notice'] = showifdef('includes_notice_statement')
   
