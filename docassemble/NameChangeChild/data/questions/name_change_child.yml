@@ -8,7 +8,6 @@ metadata:
 ---
 include:
   - docassemble.AssemblyLine:assembly_line.yml
-  - docassemble.ALToolbox:phone-number-validation.yml
   - docassemble.ILAO:ilao-interview-framework.yml
   - docassemble.ILAO:shared-basic-questions.yml
 ---
@@ -61,10 +60,10 @@ code: |
   nav.set_section('section_user')
   if user_is_adult == False:
     not_an_adult_kickout
-  if six_months_in_illinois == False:
+  if three_months_in_illinois == False:
     not_enough_illinois_kickout
-  if time_in_illinois.years < 0.5:
-    not_enough_illinois_kickout
+  #if time_in_illinois.years < 0.25:
+  #  not_enough_illinois_kickout
   set_progress(20)
   users[0].name.first
   use_safe_address
@@ -87,73 +86,51 @@ code: |
         if child.main_other_parent.rights_terminated == False:
           if child.main_other_parent.agree == True:
             notarized_signature
-          else:
-            notice_waiver_info
+          elif child.main_other_parent.address_known:
+            child.main_other_parent.address.address
             child.main_other_parent.risk_check
-            if child.main_other_parent.risk_check == False:
-              if child.main_other_parent.address_known == True:
-                child.main_other_parent.receive_method
-              else:
-                published_notice_info
+
       if child.any_other_parents == True:
         interview_parent_index = 0
         while interview_parent_index < child.parents.number_gathered():
           if child.parents[interview_parent_index].parent_type != "Parent" or child.parents[interview_parent_index].rights_terminated == False:
             if child.parents[interview_parent_index].agree == True:
               notarized_signature
-            else:
-              notice_waiver_info
+            elif child.parents[interview_parent_index].address_known:
+              child.parents[interview_parent_index].address.address
               child.parents[interview_parent_index].risk_check
-              if child.parents[interview_parent_index].risk_check == False:
-                if child.parents[interview_parent_index].address_known == True:
-                  child.parents[interview_parent_index].receive_method
-                else:
-                  published_notice_info
+
 
           interview_parent_index += 1
-      #child.waiver_code_block    
   waiver_reason_logic
   set_progress(60)
-
-  #If any parent who needs to be notified poses a risk or if notice by publication would be required but could cause the child a hardship, the questions around motion to waive notice/publication should be asked.
-  #if any_risk == True or (child_notice_would_be_published == True and request_waiver == True):
-  #  note_about_waiver
-  #  if waiver_reason['order'] == True:
-  #    if protective_order.any_true():
-  #      order_against_parents
-  #      orders.gather()
-  #  #Following if statement is commented out as the hardship field on the form is available to anyone requesting a waiver.
-  #  hardship_text
+  if any_to_notify == True:
+    about_giving_notice
+    about_statement
     
   nav.set_section('section_filing')
+  
   set_progress(80)
-  filing_county
-  #if trial_court_index == -1 and child_notice_would_be_published == True and (any_risk == False or request_waiver == False):
-  #  cook_district
-  #if child_notice_would_be_published == True and any_risk == False and request_waiver == False:
-  #  courthouse_info
+  case_county
+  if case_county == "Cook":
+    cook_filing_info
+  impoundment_intro
+  if request_impoundment:
+    impoundment_reasons
+    motion_info
   e_signature
     
-  if any_to_notify == True or (child_notice_would_be_published == True and any_risk == False):
-    if any_to_notify == True or any_pubish_waiver_requested == False:
-      complete_notice
-  elif child_notice_would_be_published and not any_risk:
-    if not any_pubish_waiver_requested:
-      complete_notice
-  if any_to_notify == True:
-    notice_reminder
+  
   set_progress(100)
   nav.set_section('section_download')
-  #enabled_enabler
-  #parents_zero_debug
   pop_skipped_children
   parent_on_child_sheet_logic
+  waiver_reason_logic
   refresh_bundles
   if any_to_notify:
     refresh_notice_bundle
-  template_variable_logic
   forms_assembling
-  waiver_reason_logic
+  
   snapshot_forms
   get_docs_screen
 ---
@@ -175,6 +152,10 @@ code: |
   stuff_to_snapshot['number_of_children_included'] = showifdef('included_children_count')
   
   stuff_to_snapshot['number_of_children_excluded'] = showifdef('excluded_children_count')
+
+  stuff_to_snapshot['other_parental_figure_no_agree_or_idk_agree'] = showifdef('any_to_notify')
+
+  stuff_to_snapshot['includes_statement_on_notice'] = showifdef('includes_notice_statement')
   
   store_variables_snapshot(
   	data=stuff_to_snapshot, persistent=True
@@ -199,7 +180,7 @@ code: |
     if children[i].user_relationship == "other":
       not_parent_or_guardian_kickout
     else:
-      if children[i].age_in_years(decimals=True) >= 0.5 and not children[i].six_months_in_illinois:
+      if children[i].age_in_years(decimals=True) >= 0.25 and date_difference(starting=children[i].illinois_date, ending=today()).years < 0.25:
         children[i].six_month_kickout
       else:
         if children[i].user_relationship == "bio" or children[i].user_relationship == "adopt":
@@ -211,6 +192,7 @@ code: |
         children[i].pending_arrests
         children[i].pending_charges
         children[i].misdemeanors
+        children[i].misdemeanors_outside_il
         children[i].felonies
         children[i].registry
         if children[i].registry and children[i].registry_exceptions.all_false():
@@ -231,16 +213,13 @@ code: |
         else:
           children[i].use_safe_address = False
           children[i].address.address
-      
-    #The way the forms are designed, they allow for a given child to have, in addition to the user, one other parent, one other guardian, and one other custodian. As such, the current program only allows for a the parents list associated with a given child to have 3 entries: 0 for parent, 1 for guardian, and 2 for custodian. Pending SME review, this may be retooled to allow for over 3 parental units per child. Why does this code code block go through each parents[i] individually instead of looping them? Because the program wants to keep a given parent type associated with a specific index. This probably could be done more efficiently with a loop, but I foolishly didn't set it up that way.
-      #if children[i].include_other_parent == True: 
-      #  children[i].parents[0].name.first
         about_other_parentals
         if children[i].no_main_parent == False:
+          if not children[i].main_other_parent.rights_terminated:
+            children[i].main_other_parent.agree
           
-          children[i].main_other_parent.rights_terminated
-          if children[i].main_other_parent.address_known == True:
-            children[i].main_other_parent.address.address
+            if children[i].main_other_parent.address_known == True:
+              children[i].main_other_parent.address.address
         elif children[i].other_parent_status == "deceased_parent":
           children[i].deceased_info
         if children[i].any_other_parents == True:
@@ -260,25 +239,17 @@ code: |
       children[i].parents[j].name.first
       if children[i].parents[j].parent_type == "Parent":
         children[i].parents[j].rights_terminated
-      #if children[i].parents[j].agree == True: 
-        #children[i].parents[j].notarized_signature
-      if children[i].parents[j].address_known == True:
-        children[i].parents[j].address.address
-      #if children[i].parents[j].agree != True:
-        #children[i].parents[j].notice_waiver_info  
-        #if children[i].parents[j].risk_check == False:
-          #if children[i].parents[j].address_known == True:
-            #children[i].parents[j].receive_method 
-        #if children[i].parents[j].agree != True and children[i].parents[j].address_known == False and children[i].parents[j].risk_check == False:
-          #children[i].parents[j].published_notice_info 
-        #elif children[i].parents[j].agree != True and children[i].parents[j].address_known == True and children[i].parents[j].risk_check == False and children[i].parents[j].receive_method == "newspaper":
-          #children[i].parents[j].published_notice_info 
+      if children[i].parents[j].parent_type != "Parent" or not children[i].parents[j].rights_terminated:
+        children[i].parents[j].agree
+        if children[i].parents[j].address_known == True:
+          children[i].parents[j].address.address
+      
     else:
       children[i].parents.there_is_another = False
       
   children[i].parents[j].complete = True
 ---
-#Used to calculate the amount of time the user has been living in Illinois, which needs to be 6 months or more.
+#Used to calculate the amount of time the user has been living in Illinois, which needs to be three months or more.
 depends on:
   - started_living_in_illinois
 code: |
@@ -305,7 +276,7 @@ subquestion: |
   To change a child's name in Illinois: 
 
   * Your child must be under 18 years old, and 
-  * You must have lived in Illinois for at least 6 months.
+  * You must have lived in Illinois for at least three months.
   
   You will also need details if your child has a criminal history.
 
@@ -365,13 +336,13 @@ buttons:
   - Exit: exit
   - Restart: restart
 ---
-id: six months in illinois
+id: three months in illinois
 question: |
-  Have you lived continuously in Illinois for at least 6 months?
+  Have you lived continuously in Illinois for at least three months?
 subquestion: |
   ${collapse_template(live_continuously)}
 fields:
-  - no label: six_months_in_illinois
+  - no label: three_months_in_illinois
     datatype: yesnoradio
 ---
 template: live_continuously
@@ -385,19 +356,19 @@ event: not_enough_illinois_kickout
 question: |
   Sorry
 subquestion: |
-  You must have lived continuously in Illinois for at least 6 months to use this program.
+  You must have lived continuously in Illinois for at least three months to use this program.
   
   You can use the [**Legal Services Corporation website**](https://www.lsc.gov/about-lsc/what-legal-aid/get-legal-help) to find a legal aid organization in another state. Or you can use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
 buttons:
   - Exit: exit
   - Restart: restart
 ---
-id: child six month kickout
+id: child three month kickout
 continue button field: children[i].six_month_kickout
 question: |
   Sorry
 subquestion: |
-  ${children[i].new.name_full()} (${children[i].name_full()}) must have lived in Illinois for at least 6 months to change their name in Illinois.
+  ${children[i].new.name_full()} (${children[i].name_full()}) must have lived in Illinois for at least three months to change their name in Illinois.
   
   You can use the [**Legal Services Corporation website**](https://www.lsc.gov/about-lsc/what-legal-aid/get-legal-help) to find a legal aid organization in another state. Or you can use **[Get Legal Help](https://www.illinoislegalaid.org/get-legal-help)** to find free or low-cost legal services in your area.
   
@@ -482,14 +453,16 @@ fields:
     alMax: ${today().format("yyyy-MM-dd")}
     alMin: ${today().minus(years=18).format("yyyy-MM-dd")}
 ---
-id: child six months
+id: child illinois date
 question: |
-  Has ${children[i].new.name_full()} (${children[i].name_full()}) lived in Illinois for at least 6 months?
+  When did ${children[i].new.name_full()} (${children[i].name_full()}) start living in Illinois?
 subquestion: |
-  If ${children[i].new.name_full()} (${children[i].name_full()}) has lived in Illinois without taking a break to live in another state or country, click **Yes**.
+  If ${children[i].new.name_full()} (${children[i].name_full()}) has lived in Illinois without taking a break to live in another state or country since they were born, you can enter their birthday.
 fields:
-  - no label: children[i].six_months_in_illinois
-    datatype: yesnoradio
+  - Start date: children[i].illinois_date
+    datatype: ThreePartsDate
+    alMax: ${today().format("yyyy-MM-dd")}
+    alMin: ${children[i].birthdate}
 ---
 id: child too old
 continue button field: children[i].too_old
@@ -613,6 +586,18 @@ fields:
       name_suffix()
     required: False
 ---
+#Do we need to include this question? Minors can be married and therefore can get divorced.
+id: name change after divorce
+question: |
+  IS ${children[i].new.name_full()} (${children[i].name_full()})} changing their name as a result of a divorce?
+subquestion: |
+  If their divorce judgment gives them permission to return to using their former or maiden name, you do not need to file a separate name change request. The divorce judgment should work as an effective court order to change identification.
+
+  You should be able to get a copy of their divorce judgment from the Circuit Clerk's office or website. For more information, see ILAO's article on [**How to get copies of your court records**](https://www.illinoislegalaid.org/node/33186).
+fields:
+  - no label: children[0].after_divorce
+    datatype: yesnoradio
+---
 id: child birth address
 question: |
   ${children[i].new.name_full()} (${children[i].name_full()})'s birth place
@@ -657,11 +642,19 @@ subquestion: |
   If ${children[i].new.name_full()} (${children[i].name_full()}) has another known biological parent or parent listed on the birth certificate other than you, you should click **Yes** unless they have died.
   
   If ${children[i].new.name_full()} (${children[i].name_full()}) only has guardians or custodians, you should click **No**. The program will ask about guardians and custodians later.
-field: children[i].other_parent_status
-choices:
-  - Yes: has_other_parent
-  - No: no_other_parent
-  - Their other parent has died.: deceased_parent
+fields: 
+  - no label: children[i].other_parent_status
+    input type: radio
+    choices:
+      - Yes: has_other_parent
+      - No: no_other_parent
+      - Their other parent has died.: deceased_parent
+  - Why is there only one parent?: children[i].no_parent_reason
+    input type: area
+    maxlength: 250
+    rows: 2
+    js show if: 
+      val('children[i].other_parent_status') == "no_other_parent"
 #This question is a post-release addition; the name change forms now have a checkbox to track whether the other parent has passed away. With this addition, I have added this question instead of including an option in the other parent name page to note a child does not have another "main" parent. Rather than taking the diligent path of rewriting all the program's references to x.no_main_parent with references to x.other_parent_status, I am taking the efficient path of setting the x.no_main_parent variable in this question's validation code. If you are reading this because my choice has led to a mess of spaghetti code, you may curse my name.
 validation code: |
   if children[i].other_parent_status == "has_other_parent":
@@ -715,7 +708,7 @@ question: |
 subquestion: |
   If your child's other parents, guardians, and custodians agree to your child's name change, they will need to sign the name change request before a notary.
 
-  If any of them do not agree to the name change, you will need to notify them of the name change request. However, you may ask the court to not require you to notify them. Courts usually do not require notification if it could risk hardship for the child.
+  If any of them do not agree to the name change, you will need to notify them of the name change request. If you are not able to notify them, you will need to tell the court why you couldn't.
 ---
 #id: child other parent
 #question: |
@@ -882,33 +875,35 @@ subquestion: |
   You can ask the court to waive (skip) this notice if you believe that notice or publication would put your child at risk of physical harm or discrimination.
 ---
 #I had to make a duplicate of this question for the other_main_parent object since this question pulls the specific child's name.
-id: other parent risk check
+id: other parents risk check
 question: |
-   Are you worried that giving notice of the name change request to ${children[i].parents[j].name_full()} would put ${children[i].new.name_full()} (${children[i].name_full()}) at risk of physical harm or discrimination?
+   Are you worried that giving notice of the name change request to ${children[i].parents[j].name_full()} could be a safety issue?
 subquestion: |
   ${collapse_template(notice_explainer)}
+
+  If you do not want to give notice to ${children[i].parents[j].name_full()} for safety reasons, you will need to tell the judge why. You can explain in a *Statement on Trying to Provide Notice*. You can download this form at the end of this program with instructions on how to use it. 
 fields:
   - no label: children[i].parents[j].risk_check
     datatype: yesnoradio
 ---
 id: other parent risk check
 question: |
-   Are you worried that giving notice of the name change request to ${children[i].main_other_parent.name_full()} would put ${children[i].new.name_full()} (${children[i].name_full()}) at risk of physical harm or discrimination?
+   Are you worried that giving notice of the name change request to ${children[i].main_other_parent.name_full()} could be a safety issue?
 subquestion: |
   ${collapse_template(notice_explainer)}
+
+  If you do not want to give notice to ${children[i].main_other_parent.name_full()} for safety reasons, you will need to tell the judge why. You can explain in a *Statement on Trying to Provide Notice*. You can download this form at the end of this program with instructions on how to use it. 
 fields:
   - no label: children[i].main_other_parent.risk_check
     datatype: yesnoradio
 ---
 template: notice_explainer
 subject: |
-  **What is "giving notice?"**
+  **Learn about "giving notice"**
 content: |
   Notice is the way you tell other parents and guardians about the name change and court dates.
   
-  This program can make *Notice of Court Date* forms. You can give this form to other parents and guardians by certified mail or by asking the sheriff to deliver a copy. 
-  
-  If you do not know a parent or guardian's address, you can notify them by newspaper. This program can make a *Publication Notice of Court Date* form.
+  This program can make *Notice of Court Date* forms. You can give this form to other parents and guardians by certified mail or by asking the sheriff to deliver a copy.
 ---
 sets:
   - children[i].skip
@@ -919,7 +914,7 @@ code: |
       child.skip = True
     elif child.user_relationship == "other":
       child.skip = True
-    elif child.age_in_years(decimals=True) >= 0.5 and not child.six_months_in_illinois:
+    elif child.age_in_years(decimals=True) >= 0.25 and date_difference(starting=child.illinois_date, ending=today()).years < 0.25:
       child.skip = True
     elif child.user_relationship == "bio" or child.user_relationship == "adopt":
       if child.no_parental_rights == True:
@@ -930,82 +925,7 @@ code: |
       child.skip = False
   check_for_skips = True
 ---
-id: debug screen
-continue button field: children[i].new_debug_screen
-question: |
-  Debug screen
-subquestion: |
-  Notice list index tracker: ${notice_list_index_tracker}
-  
-  Parent list generator number gathered: ${parent_list_generator.number_gathered()}
-  
-  ${children[i].name_full()}
-  
-  name list: comma_and_list(parent_list_generator)}
-  
-  Do these names not match? 
-  
-  * Parent list generator name: parent_list_generator[notice_list_index_tracker].name_full()
-  * Main other parent name: child.main_other_parent.name_full()
----
-id: more debug
-continue button field: more_debug
-question: |
-  more debug!
-subquestion: |
- how many parents in p_l_g? ${parent_list_generator.number_gathered()}
- 
- % if parent_list_generator.number_gathered() > 0:
- Whose listed? ${comma_and_list(parent_list_generator)}
- % else:
- Empty list
- % endif
- 
- First in index? ${parent_list_generator[0].name_full()}
----
-id: third debug
-continue button field: third_debug
-question: |
-  Third debug
-subquestion: |
-  how many parents in p_l_g? ${parent_list_generator.number_gathered()}
-  
-  They are comma_and_list(parent_list_generator)
----
-generic object: ALIndividual
-continue button field: x.guardian_debug
-id: guardian debug
-question: |
-  guardian debug
----
 #This code block handles logic for generating the text of the waiver reason question
-#depends on:
-#  - children[i].any_other_parents
-#  - children[i].name.first
-#  - children[i].name.middle
-#  - children[i].name.last
-#  - children[i].name.suffix
-#  - children[i].name.new.first
-#  - children[i].name.new.middle
-#  - children[i].name.new.last
-#  - children[i].name.suffix
-#  - children[i].parents[j].agree
-#  - children[i].parents[j].risk_check
-#  - children[i].parents[j].address_known
-#  - children[i].parents[j].name.first
-#  - children[i].parents[j].name.middle
-#  - children[i].parents[j].name.last
-#  - children[i].parents[j].name.suffix
-#  - children[i].parents[j].rights_terminated
-#  - children[i].no_main_parent
-#  - children[i].main_other_parent.agree
-#  - children[i].main_other_parent.risk_check
-#  - children[i].main_other_parent.address_known
-#  - children[i].main_other_parent.name.first
-#  - children[i].main_other_parent.name.middle
-#  - children[i].main_other_parent.name.last
-#  - children[i].main_other_parent.name.suffix
-#  - children[i].main_other_parent.rights_terminated
 reconsider: True
 code: |
   #Parent list generator is used to gather the information of parents who the user must notify. This list is generated because just iterating through all known parents would include empty objects and parents who do not need to be notified.
@@ -1016,17 +936,12 @@ code: |
   parent_count = 0
   
   #The following variables are used as flags. 
-  #child_notice_would_be_published should be set to True if two conditions are met. 1. A parent does not agree to the name change (or their agrement is unknown) 2. The user does not know their address.
-  #any_risk tracks should be True if there is at least one parent who does not agree to the name change and may pose a risk to the child.
+
   # any_to_notify should be True if there is at least one parent who does not agree to the name change and does not pose a risk to the child.
-  child_notice_would_be_published = False
-  any_risk = False
   any_to_notify = False
-  any_pubish_waiver_requested = False
+  includes_notice_statement = False
   #In addition to setting the above flags to True if necessary, this for loop also generates the parent_list_generator object.
   for child in children:
-    child.child_notice_would_be_published = False
-    child.any_risk = False
     child.any_to_notify = False
     if not child.skip:
     
@@ -1038,37 +953,26 @@ code: |
         child.address.address
       if child.no_main_parent == False:
         if child.main_other_parent.rights_terminated == False:
+
           if child.main_other_parent.address_known == True:
             child.main_other_parent.address.address
           if child.main_other_parent.agree != True:
-            #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
-            notice_waiver_info  
-            if child.main_other_parent.address_known == False:
-              child.child_notice_would_be_published = True
-              child_notice_would_be_published = True
-            #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
-            elif child.main_other_parent.risk_check == False:
-              
-              child.main_other_parent.receive_method 
+            any_to_notify = True
+            child.any_to_notify = True
+      
             
-            if child.main_other_parent.risk_check == True:
-              
-              any_risk = True
-              child.any_risk = True
-            else:
-              if child.main_other_parent.address_known == True:
-                child.main_other_parent.address.address
-                any_to_notify = True
-                child.any_to_notify = True
-                already_included = False
-                if parent_list_generator.number_gathered() > 0:                  
-                  for item in parent_list_generator:
-                    if child.main_other_parent.name_full() == item.name_full():
-                      if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
-                          already_included = True                      
-                if already_included == False:
-                  if not child.any_risk and not showifdef('child.request_waiver'):
-                    parent_list_generator.append(child.main_other_parent)
+            if child.main_other_parent.address_known == True:
+              child.main_other_parent.address.address
+            elif child.main_other_parent.risk_check:
+              includes_notice_statement = True
+            already_included = False
+            if parent_list_generator.number_gathered() > 0:                  
+              for item in parent_list_generator:
+                if child.main_other_parent.name_full() == item.name_full():
+                  if child.main_other_parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                      already_included = True                      
+            if already_included == False:
+              parent_list_generator.append(child.main_other_parent)
           else:  
              notarized_signature
       
@@ -1079,116 +983,24 @@ code: |
             if parent.parent_type != "Parent" or parent.rights_terminated == False:
               if parent.address_known == True:
                 parent.address.address
-              if parent.agree != True:
-                #The following line is just included to ensure the notice waiver info block is triggered if parent.agree is set to not true via review screen.
-                notice_waiver_info  
-                if parent.address_known == False:
-                  child_notice_would_be_published = True
-                  child.child_notice_would_be_published = True
-                #The following elif statement just ensures that receive_method is defined. It shouldn't do anything on the initial pass of this code block, but it should trigger the receive method question if a user edits a parent's information post-gathering and the new information means receive method must be asked.
-                elif parent.risk_check == False:
-                  
-                  parent.receive_method 
+              elif parent.risk_check:
+                includes_notice_statement = True
+              if parent.agree != True:              
                 
-                if parent.risk_check == True:
-                  any_risk = True
-                  child.any_risk = True
-                else:
-                  if parent.address_known == True:
-                    any_to_notify = True
-                    already_included = False
-                    if parent_list_generator.number_gathered() > 0:                  
-                      for item in parent_list_generator:
-                        if parent.name_full() == item.name_full():
-                          if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
-                              already_included = True                      
-                    if already_included == False:
-                      if not child.any_risk and not showifdef('child.request_waiver'):
-                        parent_list_generator.append(parent)
+                any_to_notify = True
+                already_included = False
+                if parent_list_generator.number_gathered() > 0:                  
+                  for item in parent_list_generator:
+                    if parent.name_full() == item.name_full():
+                      if parent.address.on_one_line(bare=True) == item.address.on_one_line(bare=True):
+                          already_included = True                      
+                if already_included == False:
+                  parent_list_generator.append(parent)
               else:  
                  notarized_signature
-    if child.any_risk or (child.child_notice_would_be_published == True and child.request_waiver == True):
-      if showifdef('child.request_waiver'):
-        child.any_risk = True
-      child.note_about_waiver
-      if child.waiver_reason['order'] == True:
-        if child.protective_order.any_true():
-          child.order_against_parents
-          child.orders.gather()        
-      child.hardship_text
     
     parent_list_generator.there_is_another = False 
- 
-  #The following block generates a list of which children would need to be included in a publication notice. 
-  published_children.clear()
-  published_children.there_is_another = False
-  include_publication_notice = False
-  if child_notice_would_be_published == True:
-    for child in children:
-      child.safe_publish = True
-      child.need_publish = False
-      if not child.skip:
-        
-        if child.no_main_parent == False and child.main_other_parent.rights_terminated == False:
-          if child.main_other_parent.address_known == False and child.main_other_parent.agree != True and child.main_other_parent.risk_check != True:
-            child.need_publish = True
-          elif child.main_other_parent.agree != True and child.main_other_parent.risk_check == True:
-            child.safe_publish = False
-        if child.any_other_parents == True:
-          child_publish_parent_index = 0
-          while child_publish_parent_index < child.parents.number_gathered():
-            if child.parents[child_publish_parent_index].parent_type != "Parent" or child.parents[child_publish_parent_index].rights_terminated == False:
-              if child.parents[child_publish_parent_index].address_known == False and child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check != True:
-                child.need_publish = True
-              elif child.parents[child_publish_parent_index].agree != True and child.parents[child_publish_parent_index].risk_check == True:
-                child.safe_publish = False
-            child_publish_parent_index += 1
-        if child.safe_publish == True and child.need_publish == True:
-          if not child.any_risk and not showifdef('child.request_waiver'):
-            published_children.append(child)
-            include_publication_notice = True
-        elif child.need_publish:
-            any_pubish_waiver_requested = True
-  published_children.there_is_another = False
-  #third_debug
-  #This code block removes any parents in the list of parents to notify attached to children for whom the user wants to waive notice for another parent. It would make more sense to have not included them in the first place, but this is a change added after publication so adding this popping approach, while less efficient, requires less detangling of the code.
-  if parent_list_generator.number_gathered() > 0:
-    
-    for child in children:
-      
-      if child.any_risk or showifdef('child.request_waiver') == True:
-        
-        notice_list_index_tracker = 0
-        
-        while (notice_list_index_tracker < parent_list_generator.number_gathered()) and (parent_list_generator.number_gathered() > 0):
-          
-          popped_main_parent = False
-          any_popped_in_parents_list = False
-          if parent_list_generator.number_gathered() > 0:
-            
-            #if notice_list_index_tracker == 1:
-              #child.new_debug_screen
-            
-            if child.no_main_parent == False:  
-              if defined('parent_list_generator[notice_list_index_tracker].name.first'):
-                if parent_list_generator[notice_list_index_tracker].name_full() == child.main_other_parent.name_full():
-                  parent_list_generator.pop(notice_list_index_tracker)
-                  #third_debug
-                  popped_main_parent = True
-            if not popped_main_parent:  
-              
-              if child.any_other_parents == True and parent_list_generator.number_gathered() > 0:
-                #child.new_debug_screen
-                for childs_parent in child.parents:
-                  if defined('parent_list_generator[notice_list_index_tracker].name.first'):
-                    if parent_list_generator[notice_list_index_tracker].name_full() == childs_parent.name_full():
-                      #childs_parent.guardian_debug
-                      parent_list_generator.pop(notice_list_index_tracker)
-                      any_popped_in_parents_list = True
-          if not any_popped_in_parents_list and not popped_main_parent:
-            notice_list_index_tracker += 1
-            
-            #child.new_debug_screen
+
           
   
   waiver_reason_logic = True
@@ -1197,15 +1009,15 @@ sets:
   - children[i].include_parents_zero_on_child_sheet
 reconsider: True
 code: |
-  any_under_six_months = False
+  any_under_three_months = False
   for child in children:
     child.include_parents_zero_on_child_sheet = False
     if not child.skip:
-      if child.age_in_years(decimals=True) < 0.5:
-        any_under_six_months = True
+      if child.age_in_years(decimals=True) < 0.25:
+        any_under_three_months = True
       if child.no_main_parent == False:
         child.include_parents_zero_on_child_sheet = False
-        if child.main_other_parent.rights_terminated == False:
+        if child.other_parent_status != "deceased_parent":
           child.include_main_parent_on_child_sheet = True
         else:
           child.include_main_parent_on_child_sheet = False
@@ -1213,7 +1025,7 @@ code: |
         child.include_main_parent_on_child_sheet = False
         if child.any_other_parents == True:
           if child.parents[0].parent_type == "Parent":
-            if child.parents[0].rights_terminated == False and child.other_parent_status != "deceased_parent":
+            if child.other_parent_status != "deceased_parent":
               child.include_parents_zero_on_child_sheet = True
             else:
               child.include_parents_zero_on_child_sheet = False
@@ -1223,15 +1035,15 @@ code: |
           child.include_parents_zero_on_child_sheet = False
   parent_on_child_sheet_logic = True
 ---
-reconsider: True
-code: |
-  for child in children:
-    if child.any_other_parents:
-      for parent in child.parents:
-        parent.publication_needer = False
-        if parent.address_known == False and parent.agree != True and parent.risk_check != True and showifdef('child.request_waiver') != True:
-          parent.publication_needer = True
-  template_variable_logic = True
+#reconsider: True
+#code: |
+#  for child in children:
+#    if child.any_other_parents:
+#      for parent in child.parents:
+#        parent.publication_needer = False
+#        if parent.agree != True and parent.risk_check != True:
+#          parent.publication_needer = True
+#  template_variable_logic = True
 ---
 id: want to publish check
 question: |
@@ -1541,28 +1353,13 @@ validation code: |
   else:
     trial_court = court_list.as_court('trial_court', trial_court_index)
 ---
-code: |
-  trial_court_index
-  filing_county = trial_court.address.county
----
-depends on:
-  - trial_court_index
-  - cook_district
-code: |
-  if trial_court_index == -1:
-    #I commented out the line normally used in this sort of code block and manually put in 15 instead. This sets the trial_court object to the Daley Center for any user filing in Cook County. Why did I do this? Because the courthouse address is not used in this program, this code block is only being used due to our standardization of the county blocks. If you need to reintroduce courthouse addresses in an update, reimplement the "trial_court = court_list.as_court('trial_court', cook_district)" line. You'll also want to reactivate the corresponding review screen buttons.
-    #trial_court = court_list.as_court('trial_court', cook_district)
-    trial_court = court_list.as_court('trial_court', 15)
-  else:
-    trial_court = court_list.as_court('trial_court', trial_court_index)
-    
-  court_name = str(trial_court.name)
-  court_street_address = str(trial_court.address.address)
-  court_city = str(trial_court.address.city)
-  court_state = str(trial_court.address.state)
-  court_zip = str(trial_court.address.zip)
-  filing_county = str(trial_court.address.county)
-  courthouse_info = court_name + ", " + court_street_address + ", " + court_city + ", " + court_state + " " + court_zip
+id: filing county
+question: |
+  Where will you file the name change?
+fields:
+  - County: case_county
+    code:
+      court_list._load_courts()["address_county"].unique()
 ---
 id: Cook County district
 question: |
@@ -1586,14 +1383,132 @@ subject: |
 content: |  
   Visit **[Illinois Court Help](https://www.ilcourthelp.gov/)**, or you can call or text (833) 411-1121 for assistance.
 ---
+id: impoundment intro
+continue button field: impoundment_intro
+question: |
+  Keeping the name change court file private
+subquestion: |
+  You can ask that the court impound name change court files. This means the court records will be kept private. Only the people involved in the case, the judge, and the court clerk can see them unless the judge gives someone else permission.
+---
+id: impound records question
+question: |
+  Do you want to keep ${child_name_the_children}'s name change court file private?
+subquestion: |
+  You can ask to make a child's court file private if it would be a hardship for them and have a negative impact on their health or safety. This request is called a *Motion to Impound (Make Court Records Private)*.
+  
+  Some people are at higher risk of hardship if their name change court file is part of the public record. These include people who are:
+
+  * Transgender,
+  * Adoptees,
+  * Survivors of domestic or intimate partner violence,
+  * Survivors of gender-based violence,
+  * Survivors of human trafficking,
+  * Granted special immigrant status by the United States Citizenship and Immigration Service,
+  * Survivors of reparative or conversion therapy, and
+  * Granted asylum in this country.  
+
+fields:
+  - Want to keep the court file private?: request_impoundment
+    datatype: yesnoradio
+---
+reconsider: True
+code: |
+  if children.number_gathered() == 1:
+  
+    child_name_the_children = children[0].new.name_full()
+    child_name_the_children += " ("
+    child_name_the_children += children[0].name_full()
+    child_name_the_children += ")"
+    has_have = "has"
+    is_are = "is"
+    child_children = "child"
+    pluralize = ""
+
+  else:
+    child_name_the_children = "the children"
+    has_have = "have"
+    is_are = "are"
+    child_children = "children"
+    pluralize = "s"
+---
+id: impoundment reasons
+question: |
+  Why do you want the name change court file to be private?
+subquestion: |
+  Your Motion will explain why making the court file public would be a hardship for ${child_name_the_children} and have a negative impact on their health or safety.
+
+  ${ collapse_template(hardship_categories) }
+
+fields:
+  - Having the court file public would be a hardship because (check all that apply):: impoundment_reasons
+    datatype: checkboxes
+    minlength: 1
+    choices:
+      - ${capitalize(child_name_the_children)} ${is_are} at higher risk of hardship based on their identity, experience, or status.: member
+        help: |
+          Some people are at higher risk of hardship if their name change court file is part of the public record. These include people who are:
+
+          * Transgender,
+          * Adoptees,
+          * Survivors of domestic or intimate partner violence,
+          * Survivors of gender-based violence,
+          * Survivors of human trafficking,
+          * Granted special immigrant status by the United States Citizenship and Immigration Service,
+          * Survivors of reparative or conversion therapy, and
+          * Granted asylum in this country.  
+      - ${capitalize(child_name_the_children)} ${has_have} other reasons including fear of physical harm, discrimination, harassment, bullying, or threats of violence.: other
+    label above field: True
+    validation messages:
+      minlength: |
+        Please select at least one or click < Back if none apply.
+---
+template: hardship_categories
+subject: |
+  **Types of people who are at higher risk of hardship**
+content: |  
+  Some people are at higher risk of hardship if their name change court file is part of the public record. These include people who are:
+
+  * Transgender,
+  * Adoptees,
+  * Survivors of domestic or intimate partner violence,
+  * Survivors of gender-based violence,
+  * Survivors of human trafficking,
+  * Granted special immigrant status by the United States Citizenship and Immigration Service,
+  * Survivors of reparative or conversion therapy, and
+  * Granted asylum in this country.
+---
+id: cook filing info
+continue button field: cook_filing_info
+question: |
+  Special Cook County instructions
+subquestion: |
+  In Cook County, the Court requires all petitioners to e-file, as an exhibit, a photo or scanned copy of the ${child_children}'s birth certificate${pluralize} and photo ID${pluralize}. If the ${child_children}'s photo ID${pluralize} does not have a Cook County address, you need to provide additional proof of address (such as a lease or a bill).
+  
+  **Note:** If the ${child_children}'s birth certificate${pluralize} ${is_are} in a language other than English, the judge may ask you to provide a certified translation of the birth certificate${pluralize}. Birth certificates can usually be ordered from the agency in the ${child_children}'s state or country of birth that oversees vital records. If it is not possible for you to get a birth certificate, the court will likely ask you to provide additional documentation.
+  
+  You can redact any sensitive information. Save exhibits as a PDF file and be in portrait orientation.
+  
+  This information will be included on the instructions you download at the end of the program. If you have any questions about e-filing or paper filing, visit **[Illinois Court Help](https://www.ilcourthelp.gov/)**, or call or text (833) 411-1121 for assistance.  
+---
+id: motion to impound info
+continue button field: motion_info
+question: |
+  About the Motion to Impound
+subquestion: |
+  You should file or e-file your *Motion to Impound (Make Court Records Private)* at the same time as the name change request. The judge will review the Motion when they consider the name change request.
+
+  When you file your forms, you may attach supporting documents like court orders to help explain why it would be a hardship. Additional information is not required. The Motion should be enough.
+
+  **Note:** Until the Motion is granted or if the Motion is denied, the name change request will be a public record.
+---
 template: signature_help
 subject: |
   **What does it mean to sign the *Request for Name Change*?**
 content: |  
   By signing your *Request for Name Change*, you are certifying that:
   
-  * Everything on the form is true and correct, and
-  * You understand that making a false statement on the form is perjury, which can result in criminal penalties.
+  * Everything on the form is true and correct, or you have been informed or you believe it is true and correct, and
+  * You understand that making a false statement on the forms is perjury, and has penalties provided by law.
   
   See the [**Code of Civil Procedure, 735 ILCS 5/1-109**](https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm), for more information.
 ---
@@ -1615,29 +1530,10 @@ subquestion: |
 id: complete publication notice
 continue button field: complete_notice
 question: |
-  % if child_notice_would_be_published == True and any_risk == False and any_to_notify == True:
-  Complete your notices
-  % elif child_notice_would_be_published == True and any_risk == False:
-  Complete your publication notice
-  % else:
-  % if parent_list_generator.number_gathered() > 1:
-  Complete your notices
-  % else:
-  Complete your notice
-  % endif
-  % endif
+  About the *Notice of Court Date*
 subquestion: |
-  When you file the name change request, the clerk should give you details about going to court. 
+  When you file the name change request, the clerk should give you details about going to court. If 
   
-  % if child_notice_would_be_published == True and any_risk == False and any_to_notify == True:
-  Add the court hearing date, time, and how to attend court to the *Notice of Court Date* and *Publication Notice of Court Date* forms.
-  
-  **Note:** These sections need to be complete before you send out the notices. 
-  % elif child_notice_would_be_published == True and any_risk == False:
-  Add the court hearing date, time, and how to attend court to the *Publication Notice of Court Date*.
-  
-  **Note:** These sections need to be complete before the newspaper can publish the notice.  
-  % else:
   % if parent_list_generator.number_gathered() > 1:
   Add the court hearing date, time, and how to attend court to the *Notice of Court Date* forms.
   
@@ -1646,7 +1542,6 @@ subquestion: |
   Add the court hearing date, time, and how to attend court to the *Notice of Court Date*.
   
   **Note:** These sections need to be complete before you send out the notice. 
-  % endif
   % endif
   
   [FILE name_change_court_date.png, 100%, Court Date Information section of Publication notice]
@@ -1671,11 +1566,10 @@ subquestion: |
     <p>By signing your <i>Small Claims Complaint</i>, you are certifying that:
   <p>
   <p><ul>
-  <li>You read the document,</li>
-  <li>You believe it to be true and correct, and</li>
-  <li>You are not filing it for an improper purpose.</li>
+  <li>Everything on the forms is true and correct, or you have been informed or believe it to be true and correct, and</li>
+  <li>You understand that making a false statement on the forms is perjury and has penalties provided by law.</li>
   </ul><p>
-  <p>See the <a href="https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm"><b>Code of Civil Procedure, 735 ILCS 5/1-109</b></a> for more information.</p>
+  <p>See the <a href="https://www.ilga.gov/legislation/ilcs/documents/073500050k1-109.htm"><b>Illinois Code of Civil Procedure, 735 ILCS 5/1-109</b></a> for more information.</p>
   </div>
 field: e_signature
 choices:
@@ -1684,6 +1578,30 @@ choices:
 terms:
   - "e-signature": |
       An e-signature is an electronic signature. It is a digital version of a signature that has the same effect as a hand-written signature.
+---
+id: about giving notice 
+continue button field: about_giving_notice
+question: |
+  Giving notice of the name change
+subquestion: |
+  Based on your answers, you need to give another parent, guardian, or custodian notice about the name change hearing. You can send them notice by certified mail, or you can have a sheriff give them notice. 
+  
+  This program will make you a mostly blank *Letter to the Sheriff*. You can use this form to ask a sheriff to serve notice in their county.
+---
+id: about notice statement
+continue button field: about_statement
+question: |
+  When you can not give notice
+subquestion: |
+  If you need to give notice to a parent, guardian, or custodian and you do not know where they are, you should try to find them. You could send mail to their last known address, look them up on the internet, or ask their family or friends where they are.
+
+  If you cannot find them, you will need to give the court a *Statement on Trying to Provide Notice* form. You can use this form to tell the court how you tried to give the person notice.
+
+  If you have a safety concern about giving notice to someone, you can explain why on the *Statement on Trying to Provide Notice*. You can do this even if you know where the other person is.
+
+  This program will make you a mostly blank *Statement on Trying to Provide Notice*. If you are not able to give someone notice, you may need to complete the form and give it to the court.
+
+  If there is more than one person you are unable to give notice to, you will need a *Statement* form for each one.
 ---
 id: forms assembling
 continue button field: forms_assembling
@@ -1713,7 +1631,7 @@ subquestion: |
   
   The Instructions have important information. You can read them to find out what to do next.
   
-  This program does not file your forms with the court. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
+  This program **does not file** your forms with the court. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
   
   ${ action_button_html(url_action('review_answers'), label=':edit: Make changes', color='success', size="md") }
 
@@ -1723,7 +1641,7 @@ subquestion: |
 
   ${ al_user_bundle.send_button_html(show_editable_checkbox=False) }
   
-  **Note:** This program **does not** file your forms. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
+  **Note:** This program **does not file** your forms. You will need to do this yourself. Learn about [**e-filing in Illinois**](https://www.illinoiscourts.gov/eservices/information-for-filers-without-lawyers).
 
   Thank you for using ILAO Easy Forms!
 under: |
@@ -1752,12 +1670,14 @@ objects:
   - publication_notice: ALDocument.using(title = "Publication notice of court date", filename="publication_notice.pdf", has_addendum=False)
   #- order_to_waive_notice: ALDocument.using(title = "Order on motion to waive notice and publication", filename="order_to_waive_notice.pdf", has_addendum=False)
   - order: ALDocument.using(title = "Order for name change (minor name change)", filename="order.pdf", has_addendum=False)
+  - motion_to_impound: ALDocument.using(title="Motion to Impound", filename="motion_to_impound.pdf", has_addendum=False)
+  - order_to_impound: ALDocument.using(title="Order on Motion to Impound", filename="order_to_impound.pdf", has_addendum=False)
+  - sheriff_letter: ALDocument.using(title="Letter to sheriff (optional, use as needed)", filename="letter_to_sheriff.pdf", has_addendum=False)
+  - notice_statement: ALDocument.using(title="Statement on Trying to Provide Notice (optional, use as needed)", filename="notice_statement.pdf", has_addendum=False)
   #- motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
 ---
 objects:
   - children[i].additional_parents_bundle: ALDocumentBundle.using(elements=[], filename="additional_parent.pdf", title = "Additional parents", enabled=True)
----
-
 ---
 reconsider: True
 code: |
@@ -1767,22 +1687,21 @@ code: |
   
   for index, child in enumerate(children):
     child.elements_for_additional_parents_bundle = []
-    child.motion_to_waive_notice.enabled = False
-    child.order_to_waive_notice.enabled = False
     if not child.skip:
       for index, parent in enumerate(child.parents):
-        child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet)   
+        child.elements_for_additional_parents_bundle.append(parent.parent_info_sheet) 
+        
       child.additional_parents_bundle.elements = child.elements_for_additional_parents_bundle
       #The next line is commented out to test for an issue with the single_child_bundle. The alternative is appending each element within the bundle individually.
       #elements_for_children_bundle.append(child.single_child_bundle)
       elements_for_children_bundle.append(child.child_information)
       elements_for_children_bundle.append(child.additional_criminal_history)
       elements_for_children_bundle.append(child.additional_parents_bundle)
-      if child.any_risk == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
-        child.motion_to_waive_notice.enabled = True
-        child.order_to_waive_notice.enabled = True
-        elements_for_waive_bundle.append(child.motion_to_waive_notice)
-        elements_for_waive_order_bundle.append(child.order_to_waive_notice)
+      #if child.any_risk == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
+      #  child.motion_to_waive_notice.enabled = True
+      #  child.order_to_waive_notice.enabled = True
+      #  elements_for_waive_bundle.append(child.motion_to_waive_notice)
+      #  elements_for_waive_order_bundle.append(child.order_to_waive_notice)
   organized_children_bundle.elements = elements_for_children_bundle
   motion_to_waive_bundle.elements = elements_for_waive_bundle
   order_to_waive_bundle.elements = elements_for_waive_order_bundle
@@ -1819,31 +1738,37 @@ objects:
 #  - all_criminal_addendums: ALDocumentBundle.using(elements=[item.additional_criminal_history for item in children], filename="additional_criminal_history.pdf", title = "Additional criminal history", enabled = True)
 ---
 objects:
-  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_bundle.pdf", title = "Order for name change (1 for each child)", has_addendum=False, enabled=True)
+  - change_order_bundle: ALDocumentBundle.using(elements = [order for item in children], filename="name_change_order_forms.pdf", title = "Order for name change (1 for each child)", has_addendum=False, enabled=True)
 ---
 objects:
-  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_bundle.pdf", title="Request for name change", enabled=True) 
+  - request_bundle: ALDocumentBundle.using(elements=[request, additional_children, organized_children_bundle], filename="name_change_request_forms.pdf", title="Request for name change", enabled=True) 
 ---
 objects:
-  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
-  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, publication_notice, motion_to_waive_bundle, order_to_waive_bundle, change_order_bundle], filename="name_change_child.pdf", title="All forms")
+  -  al_user_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, notice_statement, sheriff_letter, change_order_bundle, motion_to_impound, order_to_impound], filename="name_change_child.pdf", title="All forms")
+  -  al_court_bundle: ALDocumentBundle.using(elements=[instructions, request_bundle, notice_of_date_bundle, notice_statement, sheriff_letter, change_order_bundle, motion_to_impound, order_to_impound], filename="name_change_child.pdf", title="All forms")
 ---
 code: |
   instructions.enabled = True
   request.enabled = True
   order.enabled = True
   additional_children.enabled = False
+  motion_to_impound.enabled = False
+  order_to_impound.enabled = False
+  sheriff_letter.enabled = False
+  notice_statement.enabled = False
   
+  if request_impoundment:
+    motion_to_impound.enabled = True
+    order_to_impound.enabled = True
   
   #The name change request form has space for 4 children. Any more children must be on the additional children template.
   if children.number_gathered() > 4:
     additional_children.enabled = True
 
-  #notices.enabled = False
   
   #For some reason the program doesn't always behave unless I set this enabled value to True outside of the for loop. 
   if children.there_are_any and children.number_gathered() > 0:
-    children[0].child_information.enabled = True 
+    #children[0].child_information.enabled = True 
     #child_loop_index = 0 
     #while child_loop_index < children.number_gathered():
   
@@ -1859,7 +1784,14 @@ code: |
         child.parents[0].parent_info_sheet.enabled = False
       else:
         child.child_information.enabled = True
-      
+        if child.other_parent_status == "has_other_parent":
+          if not child.main_other_parent.rights_terminated and not child.main_other_parent.agree:
+            child.notice_of_court_date.enabled = True
+            sheriff_letter.enabled = True 
+            if not child.main_other_parent.address_known or child.main_other_parent.risk_check:
+              notice_statement.enabled = True
+                 
+              
         if child.felonies or child.registry or child.id_theft:
           if child.convictions.number() > 3:
             child.additional_criminal_history.enabled = True
@@ -1871,8 +1803,16 @@ code: |
           while type_check_index < child.parents.number_gathered():
             if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
               child.parents[type_check_index].parent_info_sheet.enabled = False
+            elif child.parents[type_check_index].rights_terminated:
+              child.parents[type_check_index].parent_info_sheet.enabled = False
             else:
               child.parents[type_check_index].parent_info_sheet.enabled = True
+                
+              if not (child.parents[type_check_index].parent_type == "Parent" and child.parents[type_check_index].rights_terminated) and not child.parents[type_check_index].agree:
+                child.notice_of_court_date.enabled = True              
+                sheriff_letter.enabled = True
+                if not child.parents[type_check_index].address_known or child.parents[type_check_index].risk_check:
+                  notice_statement.enabled = True
               child.additional_parents_bundle.enabled = True
               if child.parents[type_check_index].parent_type == "Custodian":
                 child.has_custodian = True
@@ -1880,26 +1820,8 @@ code: |
                 child.has_guardian = True
             type_check_index += 1
         else:
-          child.parents[0].parent_info_sheet.enabled = False
-        
-        
-  #motion_to_waive_notice.enabled = False
-  #order_to_waive_notice.enabled = False
+          child.parents[0].parent_info_sheet.enabled = False  
   publication_notice.enabled = False
-  
-  #for child in children:
-  #  child.motion_to_waive_notice.enabled = False
-  #
-  #if any_risk == True or (child_notice_would_be_published == True and showifdef('any_pubish_waiver_requested') == True):
-    #for child in children:
-    #  if not child.skip:
-    #    if child.other_parent_status == "has_other_parent" or child.any_other_parents:
-    #      if showifdef('child.any_risk') == True or (child.child_notice_would_be_published == True and showifdef('child.request_waiver') == True):
-    #        child.motion_to_waive_notice.enabled = True
-    #order_to_waive_notice.enabled = True
-  for child in children:
-    if include_publication_notice == True and showifdef('child.request_waiver') != True:
-      publication_notice.enabled = True
 ---
 attachment:
   variable name: instructions[i]
@@ -1919,7 +1841,7 @@ attachment:
   editable: False
   pdf template file: Request_for_Name_Change_Minor.pdf
   fields:
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name_full()}
     - "case_number": ${""}
     - "one_child_old_first": ${children[0].name.first}
@@ -1950,11 +1872,10 @@ attachment:
     - "child_info_attached": ${True}
     #- "illinois_start_date": ${format_date(started_living_in_illinois, format='long')}
     - "e_signature": ${ users[0].name_full() if e_signature == True else ""}
-    - "six_months": ${False if any_under_six_months else True}
     - "user_address": ${users[0].address.on_one_line(bare=True)}
     - "user_phone": ${phone_number_formatted(users[0].phone_number)}
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
-    - "user_hide_address_cb": ${ True if use_safe_address else False }
+    - "for_self": ${True}
 ---
 #Change this to a list comprehension?
 attachment:
@@ -1966,7 +1887,7 @@ attachment:
   pdf template file: Request_for_Name_Change_Additional.pdf
   fields:
     - "case_number": ${""}
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name_full()}
     - "child_old_first_5": ${children[4].name.first}
     - "child_old_middle_5": ${children[4].name.middle}
@@ -2020,7 +1941,7 @@ attachment:
   editable: False
   pdf template file: order_to_waive_notice.pdf
   fields:
-    - "trial_court_county": ${filing_county}
+    - "trial_court_county": ${case_county }
     - "user": ${ users[0].name_full() }
 ---    
 generic object: ALIndividual
@@ -2032,7 +1953,7 @@ attachment:
   editable: False
   pdf template file: motion_to_waive_notice.pdf
   fields:      
-    - "trial_court_county": ${ trial_court.address.county.upper() }
+    - "trial_court_county": ${ case_county.upper() }
     - "user__1": ${ users[0].name_full() }
     - "waiver_order_cb": ${ True if x.waiver_reason['order'] == True else '' }
     - "protective_order_op": ${ True if x.protective_order['op'] == True else '' }
@@ -2076,7 +1997,7 @@ attachment:
   editable: True
   pdf template file: Notice_of_Court_Date_Minor2.pdf
   fields:  
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name_full()}
     - "case_number": ${""}
     - "court_date": ${""}
@@ -2109,7 +2030,7 @@ attachment:
     - "custodian_notice_date": ${""}
     - "e_signature": ${ users[0].name_full() if e_signature == True else ""}
     - "user_address": ${users[0].address.on_one_line(bare=True)}
-    - "alternate_address": ${use_safe_address}
+    - "for_self": ${True}
     - "user_phone": ${phone_number_formatted(users[0].phone_number)}
     - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
 ---
@@ -2121,51 +2042,11 @@ attachment:
   editable: False
   pdf template file: Order_for_Name_Change_Minor.pdf
   fields:  
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name_full()}
     - "case_number": ${""}
----
-attachment:
-  variable name: publication_notice[i]
-  name: publication_notice
-  filename: publication_notice
-  skip undefined: True
-  editable: True
-  pdf template file: Publication_Notice_Minor2.pdf
-  fields: 
-    - "filing_county": ${filing_county}
-    - "user_name": ${ users[0].name_full()}
-    - "case_number": ${""}
-    - "child_old_name_1": ${published_children[0].name_full()}
-    - "child_new_name_1": ${published_children[0].new.name_full()}
-    - "child_old_name_2": ${published_children[1].name_full()}
-    - "child_new_name_2": ${published_children[1].new.name_full()}
-    - "child_old_name_3": ${published_children[2].name_full()}
-    - "child_new_name_3": ${published_children[2].new.name_full()}
-    - "child_old_name_4": ${published_children[3].name_full()}
-    - "child_new_name_4": ${published_children[3].new.name_full()}
-    - "more_than_four_kids": ${True if published_children.number_gathered() > 4 else False}
-    - "court_date": ${""}
-    - "court_time": ${""}
-    - "court_am": ${False}
-    - "court_pm": ${False}
-    - "courtroom": ${""}
-    - "in_person": ${False}
-    #- "courtroom_address": ${courthouse_info}
-    - "remote": ${False}
-    - "video_website": ${""}
-    - "video_log_in": ${""}
-    - "call_in_number": ${""}
-    - "clerk_phone": ${""}
-    - "clerk_website": ${""}
-    - "e_signature": ${ users[0].name_full() if e_signature == True else ""}
-    - "user_address": ${users[0].address.on_one_line(bare=True)}
-    - "alternate_address": ${use_safe_address}
-    - "user_phone": ${phone_number_formatted(users[0].phone_number)}
-    - "user_email": ${users[0].email if users[0].has_email_address == True else ""}
 ---
 objects:
-  - children[i].child_information: ALDocument.using(title="Child information", filename="child_information.pdf", has_addendum=False)
   - children[i].parents[j].parent_info_sheet: ALDocument.using(title="Parent information", filename="additional_parent.pdf", has_addendum=False)
   - children[i].additional_criminal_history: ALDocument.using(title="Additional Criminal History", filename="child_name_change_additional_criminal_history.pdf", has_addendum=False)  
   - children[i].motion_to_waive_notice: ALDocument.using(title = "Motion to waive notice and publication", filename="motion_to_waive.pdf", has_addendum=False)
@@ -2174,6 +2055,7 @@ objects:
 generic object: ALIndividual
 objects:
   - x.notice_of_court_date: ALDocument.using(title="Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False)
+  - x.child_information: ALDocument.using(title="Child information", filename="child_information.pdf", has_addendum=False)
 ---
 reconsider: True
 code: |
@@ -2202,188 +2084,254 @@ code: |
   refresh_notice_bundle = True
 ---
 objects:
-  - notice_of_date_bundle: ALDocumentBundle.using(elements=[], title= "Notice of court date", filename="notice_of_court_date.pdf", has_addendum=False, enabled=True)
+  - notice_of_date_bundle: ALDocumentBundle.using(elements=[], title= "Notice of court date forms", filename="notice_of_court_date_forms.pdf", has_addendum=False, enabled=True)
 ---
 objects:
   - motion_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Motion to waive notice (1 for each child who needs one)", filename="motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
   - order_to_waive_bundle: ALDocumentBundle.using(elements=[], title= "Order on motion to waive notice (1 for each motion)", filename="order_on_motion_to_waive_notice.pdf", has_addendum=False, enabled=True)
 ---
+generic object: ALIndividual
 attachment:
-  variable name: children[i].child_information[j]
+  variable name: x.child_information[i]
   name: child_information
   filename: child_information
   skip undefined: True
   editable: False
   pdf template file: Request_for_Name_Change_Child_Information.pdf
   fields: 
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "user_name": ${ users[0].name_full()}
     - "case_number": ${""}
-    - "child_old_first": ${children[i].name.first}
-    - "child_old_middle": ${children[i].name.middle}
-    - "child_old_last": ${children[i].name.last if children[i].name.suffix == "" else (children[i].name.last + " " + children[i].name.suffix)}
-    - "child_birth_date": ${children[i].birthdate}
-    - "child_birth_place": ${(children[i].birth_place.city + ", " + end_in_county(children[i].birth_place.county) + ", " + children[i].birth_place.state) if children[i].birth_place.in_america == True else (children[i].birth_place.city + ", " + children[i].birth_place.country)}
-    - "child_address": ${users[0].address.on_one_line(bare=True) if children[i].use_safe_address == True else children[i].address.on_one_line(bare=True)}
-    - "alternate_address": ${children[i].use_safe_address}
-    - "user_is_parent": ${True if children[i].user_relationship == "bio" or children[i].user_relationship == "adopt" else False}
-    - "user_is_guardian": ${ True if children[i].user_relationship == "custody" else False}
-    - "user_is_recognized": ${ True if children[i].user_relationship == "years" else False}
-    - "child_unpardoned_misdemeanor_true": ${True if children[i].misdemeanors == True and children[i].misdemeanor_pardon == False else False}
-    - "child_unpardoned_misdemeanor_false": ${False if children[i].misdemeanors == True and children[i].misdemeanor_pardon == False else True}
-    - "child_arrest_true": ${ True if children[i].pending_arrests == True else False}
-    - "child_arrest_false": ${ True if children[i].pending_arrests == False else False}
-    - "child_pending_charge_true": ${ True if children[i].pending_charges == True else False}
-    - "child_pending_charge_false": ${ True if children[i].pending_charges == False else False}
-    - "child_unpardoned_felony_true": ${True if children[i].felonies == True and children[i].felony_pardon == False else False}
-    - "child_unpardoned_felony_false": ${False if children[i].felonies == True and children[i].felony_pardon == False else True}
-    - "child_registration_true": ${True if children[i].registry == True else False}
-    - "child_registration_false": ${True if children[i].registry == False else False}
-    - "marriage_exception": ${True if children[i].registry == True and children[i].registry_exceptions["Marriage"] == True else False}
-    - "religious_exception": ${True if children[i].registry == True and children[i].registry_exceptions["Religious beliefs"] == True else False}
-    - "victim_exception": ${True if children[i].registry == True and children[i].registry_exceptions["Status as a victim of trafficking"] == True else False}
-    - "gender_exception": ${True if children[i].registry == True and children[i].registry_exceptions["Gender-related identity"] == True else False}
-    - "child_identity_true": ${ True if children[i].id_theft == True else False}
-    - "child_identity_false": ${ True if children[i].id_theft == False else False}
-    - "conviction_description_1": ${children[i].convictions[0].name.text}
-    - "conviction_date_1": ${ format_date(children[i].convictions[0].date, format='MM/dd/yyyy') }
-    - "sentence_1": ${  children[i].convictions[0].sentence}
-    - "completion_date_1": ${ format_date(children[i].convictions[0].completed_date, format='MM/dd/yyyy') }
-    - "pardoned_1": ${children[i].convictions[0].pardoned}
-    - "conviction_description_2": ${children[i].convictions[1].name.text}
-    - "conviction_date_2": ${ format_date(children[i].convictions[1].date, format='MM/dd/yyyy') }
-    - "sentence_2": ${  children[i].convictions[1].sentence}
-    - "completion_date_2": ${ format_date(children[i].convictions[1].completed_date, format='MM/dd/yyyy') }
-    - "pardoned_2": ${children[i].convictions[1].pardoned}
-    - "conviction_description_3": ${children[i].convictions[2].name.text}
-    - "conviction_date_3": ${ format_date(children[i].convictions[2].date, format='MM/dd/yyyy') }
-    - "sentence_3": ${  children[i].convictions[2].sentence}
-    - "completion_date_3": ${ format_date(children[i].convictions[2].completed_date, format='MM/dd/yyyy') }
-    - "pardoned_3": ${children[i].convictions[2].pardoned}
-    - "user_wishes": ${True if children[i].change_reasons["user_wants"] == True else False}
-    - "child_wishes": ${True if children[i].change_reasons["child_wants"] == True else False}
-    - "other_reason_check": ${True if children[i].change_reasons["other"] == True else False}
-    - "other_reason_text": ${ children[i].other_reason if children[i].change_reasons["other"] == True else ""}
-    - "no_other_parent": |
-        % if children[i].include_parents_zero_on_child_sheet:
-        ${False}
-        % elif children[i].include_main_parent_on_child_sheet:
-        ${False}
-        % elif children[i].other_parent_status == "deceased_parent":
-        ${False}
+    - "child_old_first": ${x.name.first}
+    - "child_old_middle": ${x.name.middle}
+    - "child_old_last": ${x.name.last if x.name.suffix == "" else (x.name.last + " " + x.name.suffix)}
+    - "child_illinois_date": |
+        % if x.age_in_years(decimals=True) < 0.25:
+        ${x.birthdate}
         % else:
-        ${True}
+        ${x.illinois_date}
         % endif
-    - "dead_other_parent": ${True if children[i].other_parent_status == "deceased_parent" else False}
+    - "child_birth_date": ${x.birthdate}
+    - "child_birth_place": ${(x.birth_place.city + ", " + end_in_county(x.birth_place.county) + ", " + x.birth_place.state) if x.birth_place.in_america == True else (x.birth_place.city + ", " + x.birth_place.country)}
+    - "child_address": ${users[0].address.on_one_line(bare=True) if x.use_safe_address == True else x.address.on_one_line(bare=True)}
+    - "alternate_address": ${x.use_safe_address}
+    - "user_is_parent": ${True if x.user_relationship == "bio" or x.user_relationship == "adopt" else False}
+    - "user_is_guardian": ${ True if x.user_relationship == "custody" else False}
+    - "user_is_recognized": ${ True if x.user_relationship == "years" else False}
+    - "child_unpardoned_misdemeanor_true": ${True if x.misdemeanors == True and x.misdemeanor_pardon == False else False}
+    - "child_unpardoned_misdemeanor_false": ${False if x.misdemeanors == True and x.misdemeanor_pardon == False else True}
+    - "child_out_state_misdemeanor_true": ${True if x.misdemeanors_outside_il == True and x.misdemeanor_outside_il_pardon == False else False}
+    - "child_out_state_misdemeanor_false": ${False if x.misdemeanors_outside_il == True and x.misdemeanor_outside_il_pardon == False else True}  
+    - "child_arrest_true": ${ True if x.pending_arrests == True else False}
+    - "child_arrest_false": ${ True if x.pending_arrests == False else False}
+    - "child_pending_charge_true": ${ True if x.pending_charges == True else False}
+    - "child_pending_charge_false": ${ True if x.pending_charges == False else False}
+    - "child_unpardoned_felony_true": ${True if x.felonies == True and x.felony_pardon == False else False}
+    - "child_unpardoned_felony_false": ${False if x.felonies == True and x.felony_pardon == False else True}
+    - "child_registration_true": ${True if x.registry == True else False}
+    - "child_registration_false": ${True if x.registry == False else False}
+    - "marriage_exception": ${True if x.registry == True and x.registry_exceptions["Marriage"] == True else False}
+    - "religious_exception": ${True if x.registry == True and x.registry_exceptions["Religious beliefs"] == True else False}
+    - "victim_exception": ${True if x.registry == True and x.registry_exceptions["Status as a victim of trafficking"] == True else False}
+    - "gender_exception": ${True if x.registry == True and x.registry_exceptions["Gender-related identity"] == True else False}
+    - "child_identity_true": ${ True if x.id_theft == True else False}
+    - "child_identity_false": ${ True if x.id_theft == False else False}
+    - "conviction_description_1": ${x.convictions[0].name.text}
+    - "conviction_date_1": ${ format_date(x.convictions[0].date, format='MM/dd/yyyy') }
+    - "sentence_1": ${  x.convictions[0].sentence}
+    - "completion_date_1": ${ format_date(x.convictions[0].completed_date, format='MM/dd/yyyy') }
+    - "pardoned_1": ${x.convictions[0].pardoned}
+    - "conviction_description_2": ${x.convictions[1].name.text}
+    - "conviction_date_2": ${ format_date(x.convictions[1].date, format='MM/dd/yyyy') }
+    - "sentence_2": ${  x.convictions[1].sentence}
+    - "completion_date_2": ${ format_date(x.convictions[1].completed_date, format='MM/dd/yyyy') }
+    - "pardoned_2": ${x.convictions[1].pardoned}
+    - "conviction_description_3": ${x.convictions[2].name.text}
+    - "conviction_date_3": ${ format_date(x.convictions[2].date, format='MM/dd/yyyy') }
+    - "sentence_3": ${  x.convictions[2].sentence}
+    - "completion_date_3": ${ format_date(x.convictions[2].completed_date, format='MM/dd/yyyy') }
+    - "pardoned_3": ${x.convictions[2].pardoned}
+    - "user_wishes": ${True if x.change_reasons["user_wants"] == True else False}
+    - "child_wishes": ${True if x.change_reasons["child_wants"] == True else False}
+    - "other_reason_check": ${True if x.change_reasons["other"] == True else False}
+    - "other_reason_text": ${ x.other_reason if x.change_reasons["other"] == True else ""}
+    - "no_other_parent": |
+        % if x.other_parent_status == "no_other_parent":
+        ${True}
+        % elif x.other_parent_status == "has_other_parent" and x.main_other_parent.rights_terminated:
+        ${True}
+        % else:
+        ${False}
+        % endif
+    - "dead_other_parent": ${True if x.other_parent_status == "deceased_parent" else False}
     #Next field commented out pending SME review  
-    #- "terminated_text": ${"(Their rights were terminated by a court order)" if children[i].any_other_parents == True and children[i].parents[0].parent_type == "Parent" and children[i].parents[0].rights_terminated == True else ""}
-    - "yes_other_parent": ${True if children[i].include_parents_zero_on_child_sheet == True or children[i].include_main_parent_on_child_sheet == True else False}
+    #- "terminated_text": ${"(Their rights were terminated by a court order)" if x.any_other_parents == True and x.parents[0].parent_type == "Parent" and x.parents[0].rights_terminated == True else ""}
+    - "one_parent_reason": |
+        % if x.other_parent_status == "no_other_parent":
+        ${x.no_parent_reason}
+        % elif x.other_parent_status == "has_other_parent" and x.main_other_parent.rights_terminated:
+        Their parental rights were terminated by a court order.
+        % endif
+    - "yes_other_parent": |
+        % if x.include_main_parent_on_child_sheet == True and not x.main_other_parent.rights_terminated:
+        ${True}
+        % elif x.include_parents_zero_on_child_sheet == True and not x.parents[0].rights_terminated:
+        ${True}
+        % else:
+        ${False}
+        % endif
     - "other_parent_first": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        ${children[i].main_other_parent.name.first}
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        ${children[i].parents[0].name.first}
+        % if x.include_main_parent_on_child_sheet == True:
+        % if not x.main_other_parent.rights_terminated:
+        ${x.main_other_parent.name.first}
+        % endif
+        % elif x.include_parents_zero_on_child_sheet == True and not x.parents[0].rights_terminated:
+        ${x.parents[0].name.first}
         % else:
         ${""}
         % endif
     - "other_parent_middle": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        ${children[i].main_other_parent.name.middle}
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        ${children[i].parents[0].name.middle}
+        % if x.include_main_parent_on_child_sheet == True:
+        % if not x.main_other_parent.rights_terminated:
+        ${x.main_other_parent.name.middle}
+        % endif
+        % elif x.include_parents_zero_on_child_sheet == True and not x.parents[0].rights_terminated:
+        ${x.parents[0].name.middle}
         % else:
         ${""}
         % endif
     - "other_parent_last": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.name.suffix == "":
-        ${children[i].main_other_parent.name.last}
+        % if x.include_main_parent_on_child_sheet == True:
+        % if not x.main_other_parent.rights_terminated:
+        % if x.main_other_parent.name.suffix == "":
+        ${x.main_other_parent.name.last}
         % else:
-        ${children[i].main_other_parent.name.last} ${children[i].main_other_parent.name.suffix}
+        ${x.main_other_parent.name.last} ${x.main_other_parent.name.suffix}
         % endif
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        % if children[i].parents[0].name.suffix == "":
-        ${children[i].parents[0].name.last}
+        % endif
+        % elif x.include_parents_zero_on_child_sheet == True and not x.parents[0].rights_terminated:
+        % if x.parents[0].name.suffix == "":
+        ${x.parents[0].name.last}
         % else:
-        ${children[i].parents[0].name.last} ${children[i].parents[0].name.suffix}
+        ${x.parents[0].name.last} ${x.parents[0].name.suffix}
         % endif
         % else:
         ${""}
         % endif
     - "other_parent_address": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.address_known == True:
-        ${children[i].main_other_parent.address.on_one_line(bare=True)}
+        % if x.include_main_parent_on_child_sheet == True:
+        % if not x.main_other_parent.rights_terminated:
+        % if x.main_other_parent.address_known == True:
+        ${x.main_other_parent.address.on_one_line(bare=True)}
         % else:
         ${"Unknown"}
         % endif
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        % if children[i].parents[0].address_known == True:
-        ${children[i].parents[0].address.on_one_line(bare=True)}
+        % endif
+        % elif x.include_parents_zero_on_child_sheet == True and not x.parents[0].rights_terminated:
+        % if x.parents[0].address_known == True:
+        ${x.parents[0].address.on_one_line(bare=True)}
         % else:
         ${"Unknown"}
         % endif
         % endif
     - "other_parent_name_full": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.agree == True:
-        ${children[i].main_other_parent.name_full()}
+        % if x.include_main_parent_on_child_sheet == True:
+        % if x.main_other_parent.agree == True:
+        ${x.main_other_parent.name_full()}
         % else:
         ${""}
         % endif
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        % if children[i].parents[0].agree == True:
-        ${children[i].parents[0].name_full()}
+        % elif x.include_parents_zero_on_child_sheet == True:
+        % if x.parents[0].agree == True:
+        ${x.parents[0].name_full()}
         % else:
         ${""}
         % endif
         % endif
     - "other_parent_disagree": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.agree == False:
+        % if x.include_main_parent_on_child_sheet == True:
+        % if x.main_other_parent.agree == False and not x.main_other_parent.rights_terminated:
         ${True}
         % else:
         ${False}
         % endif
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        % if children[i].parents[0].agree == False:
+        % elif x.include_parents_zero_on_child_sheet == True:
+        % if x.parents[0].agree == False and not x.parents[0].rights_terminated:
         ${True}
         % else:
         ${False}
         % endif
         % endif
     - "other_parent_dont_know": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.agree is None:
+        % if x.include_main_parent_on_child_sheet == True:
+        % if x.main_other_parent.agree is None and not x.main_other_parent.rights_terminated:
         ${True}
         % else:
         ${False}
         % endif
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        % if children[i].parents[0].agree is None:
+        % elif x.include_parents_zero_on_child_sheet == True:
+        % if x.parents[0].agree is None and not x.parents[0].rights_terminated:
         ${True}
         % else:
         ${False}
         % endif
         % endif
     - "other_parent_agree": |
-        % if children[i].include_main_parent_on_child_sheet == True:
-        % if children[i].main_other_parent.agree == True:
+        % if x.include_main_parent_on_child_sheet == True:
+        % if x.main_other_parent.agree == True and not x.main_other_parent.rights_terminated:
         ${True}
         % else:
         ${False}
         % endif
-        % elif children[i].include_parents_zero_on_child_sheet == True:
-        % if children[i].parents[0].agree == True:
+        % elif x.include_parents_zero_on_child_sheet == True:
+        % if x.parents[0].agree == True and not x.parents[0].rights_terminated:
         ${True}
         % else:
         ${False}
         % endif
         % endif
-    - "third_parent_false": ${True if children[i].has_guardian == False else False}
-    - "third_parent_true": ${children[i].has_guardian}
-    - "custodian_true": ${children[i].has_custodian}
-    - "custodian_false": ${ True if children[i].has_custodian == False else False}
+    - "third_parent_false": ${True if x.has_guardian == False else False}
+    - "third_parent_true": ${x.has_guardian}
+    - "custodian_true": ${x.has_custodian}
+    - "custodian_false": ${ True if x.has_custodian == False else False}
+    - "other_parent_mail": |
+        % if x.include_main_parent_on_child_sheet and not x.main_other_parent.agree:
+        ${x.main_other_parent.address_known}
+        % elif x.include_parents_zero_on_child_sheet and not x.parents[0].agree:
+        ${x.parents[0].address_known}
+        % endif
+    #I changed other_parent_mail to always be False, so the user can check the box or the "i was unable to provide notice" box based on their ability to provide notice.
+    #- "other_parent_mail": |
+    #    % if x.include_main_parent_on_child_sheet == True:
+    #    % if x.main_other_parent.receive_method == "mail" or x.main_other_parent.receive_method == "sheriff":
+    #    ${True}
+    #    % else:
+    #    ${False}
+    #    % endif
+    #    % elif x.include_parents_zero_on_child_sheet:
+    #    % if x.parents[0].receive_method == "mail" or x.parents[0].receive_method == "sheriff":
+    #    ${True}
+    #    % else:
+    #    ${False}
+    #    % endif
+    #    % endif
+    #Set up following variable once Statement on trying to provide notice
+    - "other_parent_missing": |
+        % if x.include_main_parent_on_child_sheet and not x.main_other_parent.agree:
+        % if not x.main_other_parent.address_known:
+        ${True}
+        % endif
+        % elif x.include_parents_zero_on_child_sheet and not x.parents[0].agree:
+        % if not x.parents[0].address_known:
+        ${True}
+        % endif
+        % endif
+    - "other_parent_terminated": |
+        % if not x.include_parents_zero_on_child_sheet: 
+        ${x.main_other_parent.rights_terminated}
+        % else:
+        ${x.parents[0].rights_terminated}
+        % endif
 ---
 #The fields in this pdf template refer to "user" because it is pulled from the adult name change program. In this program, the form represents the child's additional criminal history, not the user's.
 attachment:
@@ -2394,7 +2342,7 @@ attachment:
   editable: False
   pdf template file: name_change_additional_criminal_history.pdf
   fields:
-    - "trial_court_county": ${ filing_county }
+    - "trial_court_county": ${ case_county  }
     - "user__1": ${ children[i].name_full() }
     - "user_offense_name_4": ${ children[i].convictions[3].name.text }
     - "user_conviction_date_4": ${ format_date(children[i].convictions[3].date, format='MM/dd/yyyy') }
@@ -2515,7 +2463,7 @@ attachment:
   fields: 
     - "case_number": ${""}
     - "user_name": ${ users[0].name_full()}
-    - "filing_county": ${filing_county}
+    - "filing_county": ${case_county }
     - "is_parent_or_guardian": ${True if children[i].parents[j].parent_type != "Custodian" else False}
     - "is_custodian": ${True if children[i].parents[j].parent_type == "Custodian" else False}
     - "parental_first": ${children[i].parents[j].name.first}
@@ -2529,7 +2477,112 @@ attachment:
     - "disagrees": ${ True if children[i].parents[j].agree == False else False}
     - "dont_know": ${True if children[i].parents[j].agree is None else False}
     - "agrees": ${children[i].parents[j].agree}
-
+    - "agrees_2": ${children[i].parents[j].agree}
+    - "is_deceased": ${True if children[i].other_parent_status == "deceased_parent" else False}
+---
+attachment:
+  variable name: order_to_impound[i]
+  name: order_to_impound
+  filename: order_to_impound
+  skip undefined: True
+  editable: False
+  pdf template file: order_to_impound.pdf
+  fields:
+    - "trial_court_county": ${ case_county }
+    - "user": ${ users[0].name_full() }
+---
+attachment:
+  variable name: motion_to_impound[i]
+  name: motion_to_impound
+  filename: motion_to_impound
+  skip undefined: True
+  editable: False
+  pdf template file: motion_to_impound.pdf
+  fields:      
+    - "trial_court_county": ${ case_county }
+    - "user__1": ${ users[0].name_full() }
+    - "impoundment_reason_member": ${ impoundment_reasons['member'] }
+    - "impoundment_reason_other": ${ impoundment_reasons['other'] }
+    - "user_signature": ${ users[0].name_full() if e_signature else '' }
+    - "user__2": ${ users[0].name_full() }
+    - "user_address": ${ users[0].address.on_one_line(bare=True) }
+    - "user_hide_address_cb": ${ True if use_safe_address else '' }
+    - "user_phone": ${ phone_number_formatted(users[0].phone_number) }
+    - "user_atty_number": ${ '' }
+    - "user_email": ${ users[0].email if users[0].has_email_address else '' }
+---
+attachment:
+  variable name: sheriff_letter[i]
+  name: sheriff_letter
+  filename: sheriff_letter
+  skip undefined: True
+  editable: True
+  pdf template file: sheriff_letter_child_name.pdf
+  fields:    
+    - "letter_date": ${""}
+    - "sheriff_county": ${""}
+    - "sheriff_state": ${""}
+    - "sheriff_address_line_1": ${""}
+    - "sheriff_address_line_2": ${""}
+    - "sheriff_address_line_3": ${""}
+    - "other_name_1": ${""}
+    - "other_name_2": ${""}
+    - "other_name_3": ${""}
+    - "other_address_1": ${""}
+    - "other_address_2": ${""}
+    - "other_address_3": ${""}
+    - "user_name": ${users[0].name_full()}
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "user_phone": ${ phone_number_formatted(users[0].phone_number) }
+    - "user_email": ${ users[0].email if users[0].has_email_address else '' }
+    - "e_signature": ${ users[0].name_full() if e_signature else '' }
+---
+attachment:
+  variable name: notice_statement[i]
+  name: notice_statement
+  filename: notice_statement
+  skip undefined: True
+  editable: True
+  pdf template file: statement_to_provide_notice.pdf
+  fields:    
+    - "county": ${case_county}
+    - "user_name": ${users[0].name_full()}
+    - "user_name_2": ${users[0].name_full()}
+    - "case_number_1": ${""}
+    - "case_number_2": ${""}
+    - "case_number_3": ${""}
+    - "know_parent_name": ${False}
+    - "unknown_parent_name": ${False}
+    - "other_parent_name": ${""}
+    - "sent_by_mail": ${False}
+    - "sent_by_sheriff": ${False}
+    - "sheriff_reason": ${""}
+    - "cant_locate": ${False}
+    - "yes_safety_concern":
+    - "no_safety_concern":
+    - "safety_explanation":
+    - "sent_info": ${False}
+    - "no_info": ${False}
+    - "what_info": ${""}
+    - "last_contact": ${""}
+    - "yes_asked_family": ${False}
+    - "no_family_check": ${False}
+    - "yes_family_reason": ${""}
+    - "no_family_reason": ${""}
+    - "yes_contact_employer": ${False}
+    - "no_contact_employer": ${False}
+    - "yes_employer_reason": ${""}
+    - "no_employer_reason": ${""}
+    - "yes_look_online": ${False}
+    - "no_look_online": ${False}
+    - "yes_online_reason": ${""}
+    - "no_online_reason": ${""}
+    - "other_efforts": ${""}
+    - "e_signature": ${ users[0].name_full() if e_signature else '' }
+    - "user_address": ${users[0].address.on_one_line(bare=True)}
+    - "user_phone": ${ phone_number_formatted(users[0].phone_number) }
+    - "user_email": ${ users[0].email if users[0].has_email_address else '' }
+    - "for_self": ${True}
 ---
 #The next questions will be in the shared yml, this is for testing purposes
 id: criminal history intro
@@ -2606,7 +2659,7 @@ fields:
   - no label: x[i].pending_charges
     datatype: yesnoradio
 ---
-id: misdemeanors
+id: misdemeanors in illinois
 generic object: ALPeopleList
 question: |
   % if interview_type == 'adult':
@@ -2616,10 +2669,10 @@ question: |
     Does your spouse have any convictions or were they placed on probation for any misdemeanors?
     % endif
   % else:
-  Does ${x[i].new.name_full()} (${x[i].name_full()}) have any misdemeanor convictions or were they placed on probation for any misdemeanors?
+  Does ${x[i].new.name_full()} (${x[i].name_full()}) have any convictions or were they placed on probation for any misdemeanors in Illinois?
   % endif
 subquestion: |
-  These can be misdemeanors in Illinois or any other state.
+  We will ask about misdemeanors in other states on another screen.
 fields:
   - no label: x[i].misdemeanors
     datatype: yesnoradio
@@ -2627,6 +2680,29 @@ fields:
     datatype: yesnoradio
     show if:
       variable: x[i].misdemeanors
+      is: True
+---
+id: misdemeanors outside il
+generic object: ALPeopleList
+question: |
+  % if interview_type == 'adult':
+    % if i == 0:
+    Do you have any convictions or were you placed on probation for any misdemeanors outside Illinois?
+    % else:
+    Does your spouse have any convictions or were they placed on probation for any misdemeanors outside Illinois?
+    % endif
+  % else:
+  Does ${x[i].new.name_full()} (AKA ${x[i].name_full()}) have any convictions or were they placed on probation for any misdemeanors outside Illinois?
+  % endif
+subquestion: |
+  **Note:** These do not include misdemeanors in Illinois.
+fields:
+  - no label: x[i].misdemeanors_outside_il
+    datatype: yesnoradio
+  - Were all of these misdemeanors pardoned?: x[i].misdemeanor_outside_il_pardon
+    datatype: yesnoradio
+    show if:
+      variable: x[i].misdemeanors_outside_il
       is: True
 ---
 id: felonies
@@ -2900,9 +2976,15 @@ question: |
   Does ${children[i].new.name_full()} (${children[i].name_full()}) have another parent, guardian, or custodian?
 subquestion: |
   % if children[i].no_main_parent == False:
-  So far you have told us about ${comma_and_list( ( person.name_full() for person in children[i].parents ) , children[i].main_other_parent.name_full() )}.
+  % if children[i].parents.number_gathered() == 1:
+  So far you told us about ${children[i].main_other_parent.name_full()} and ${children[i].parents[0].name_full()}.
+  % elif children[i].parents.number_gathered() == 2:
+  So far you told us about ${children[i].main_other_parent.name_full()}, ${children[i].parents[0].name_full()}, and ${children[i].parents[1].name_full()}.
   % else:
-  So far you have told us about ${children[i].parents.full_names()}.
+  So far you told us about ${children[i].main_other_parent}, ${children[i].parents.full_names()}.
+  % endif
+  % else:
+  So far you told us about ${children[i].parents.full_names()}.
   % endif
 fields:
   - no label: children[i].parents.there_is_another
@@ -2968,6 +3050,8 @@ review:
       ${phone_number_formatted(users[0].phone_number)}
       % elif users[0].phone_number == "" and users[0].has_email_address == True:
       ${users[0].email}
+      % else:
+      None entered
       % endif
   - Edit: children.revisit
     button: |
@@ -2976,14 +3060,18 @@ review:
       % for my_var in children:
         * ${ my_var.new.name_full()} (${my_var.name_full()})
       % endfor
-  - label: Edit
-    fields:
-      - trial_court_index
-      - recompute:
-        - filing_county
+  #- label: Edit
+  #  fields:
+  #    - trial_court_index
+  #    - recompute:
+  #      - filing_county
+  #  button: |
+  #    **Which county are you filing the name change in?**
+  #    ${end_in_county(filing_county)}
+  - Edit: case_county
     button: |
-      **Which county are you filing the name change in?**
-      ${end_in_county(filing_county)}
+      **County where you are filing your name change request:**
+      ${ case_county }
   #- Edit: cook_district
   #  button: |
   #    **In which Cook County courthouse is your case?**
@@ -3112,10 +3200,10 @@ review:
     button: |
       **Birth date:**
       ${x.birthdate}
-  - Edit: x.six_months_in_illinois
+  - Edit: x.illinois_date
     button: |
-      **Has ${x.new.name_full()} (${x.name_full()}) lived in Illinois for at least 6 months?**
-      ${word(yesno(x.six_months_in_illinois))}
+      **when did ${x.new.name_full()} (${x.name_full()}) start living in Illinois?**
+      ${x.illinois_date}
   - Edit: x.user_relationship
     button: |
       **Your relationship to ${x.new.name_full()} (${x.name_full()}):**
@@ -3178,11 +3266,23 @@ review:
       ${word(yesno(x.pending_charges))}
   - Edit: x.misdemeanors
     button: |
-      **Does ${x.new.name_full()} (${x.name_full()}) have any misdemeanor convictions or were they placed on probation for any misdemeanors?**
+      **Does ${x.new.name_full()} (${x.name_full()}) have any misdemeanor convictions or were they placed on probation for any misdemeanors in Illinois?**
       % if x.misdemeanors == False:
       No
       % else:
       % if x.misdemeanor_pardon == True:
+      Yes, and they have been pardoned of them.
+      % else:
+      Yes, and they have not been pardoned for all of them.
+      % endif
+      % endif
+  - Edit: x.misdemeanors_outside_il
+    button: |
+      **Does ${x.new.name_full()} (${x.name_full()}) have any misdemeanor convictions or were they placed on probation for any misdemeanors outside of Illinois?**
+      % if x.misdemeanors_outside_il == False:
+      No
+      % else:
+      % if x.misdemeanor_outside_il_pardon == True:
       Yes, and they have been pardoned of them.
       % else:
       Yes, and they have not been pardoned for all of them.
@@ -3285,7 +3385,7 @@ review:
     show if: x.no_main_parent == False and x.main_other_parent.address_known == True
   - Edit: x.main_other_parent.risk_check 
     button: |
-      **Are you worried that giving notice to ${x.main_other_parent.name_full()} of the name change request would put your child at risk?**
+      **Is there a safety issue with notifying ${x.main_other_parent.name_full()} of the name change request?**
       ${word(yesno(x.main_other_parent.risk_check))}
     show if: x.no_main_parent == False and x.main_other_parent.agree != True
   - Edit: x.main_other_parent.receive_method
@@ -3321,8 +3421,8 @@ review:
         * ${ my_var.name_full()}
       % endfor
     show if: x.any_other_parents
-  - note: |
-      #### Notice and waiver (if applicable)
+  #- note: |
+  #    #### Notice and waiver (if applicable)
   - Edit: x.request_waiver
     button: |
       **Are you concerned publishing notice of ${x.new.name_full()} (${x.name_full()})'s name change would put them at risk?**
@@ -3492,7 +3592,7 @@ review:
     show if: x.address_known == True
   - Edit: x.risk_check 
     button: |
-      **Are you worried that giving notice to ${x.name_full()} of the name change request would put your child at risk?**
+      **Is there a safety issue with notifying ${x.name_full()} of the name change request?**
       ${word(yesno(x.risk_check))}
     show if: x.agree != True
   - Edit: x.receive_method
@@ -3546,6 +3646,8 @@ review:
       ${phone_number_formatted(users[0].phone_number)}
       % elif users[0].phone_number == "" and users[0].has_email_address == True:
       ${users[0].email}
+      % else:
+      None entered
       % endif
 ---
 section: Filing
@@ -3556,14 +3658,18 @@ question: |
 subquestion: |
   Edit your answers below.
 review:
-  - label: Edit
-    fields:
-      - trial_court_index
-      - recompute:
-        - filing_county
+  #- label: Edit
+  #  fields:
+  #    - trial_court_index
+  #    - recompute:
+  #      - filing_county
+  #  button: |
+  #    **Which county are you filing the name change in?**
+  #    ${end_in_county(filing_county)}
+  - Edit: case_county
     button: |
-      **Which county are you filing the name change in?**
-      ${end_in_county(filing_county)}
+      **County where you are filing your name change request:**
+      ${ case_county }
   #- Edit: cook_district
   #  button: |
   #    **In which Cook County courthouse is your case?**
