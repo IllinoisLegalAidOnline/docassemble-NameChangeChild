@@ -1803,6 +1803,8 @@ code: |
           while type_check_index < child.parents.number_gathered():
             if child.include_parents_zero_on_child_sheet == True and type_check_index == 0:
               child.parents[type_check_index].parent_info_sheet.enabled = False
+            elif child.parents[type_check_index].parent_type != "Parent":
+              child.parents[type_check_index].parent_info_sheet.enabled = True
             elif child.parents[type_check_index].rights_terminated:
               child.parents[type_check_index].parent_info_sheet.enabled = False
             else:
