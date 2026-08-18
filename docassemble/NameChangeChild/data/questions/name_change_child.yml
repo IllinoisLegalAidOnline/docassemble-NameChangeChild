@@ -3393,11 +3393,11 @@ review:
   - Edit: x.main_other_parent.receive_method
     button: |
       **How will you give ${x.main_other_parent.name_full()} notice of this name change request?**
-      % if x.receive_method == "mail":
+      % if x.main_other_parent.receive_method == "mail":
       I will give notice of this Request and the scheduled court date by certified mail.
-      % elif x.receive_method == "sheriff":
+      % elif x.main_other_parent.receive_method == "sheriff":
       I will give notice of this Request and the scheduled court date by service of process by sheriff.
-      % elif x.receive_method == "newspaper":
+      % elif x.main_other_parent.receive_method == "newspaper":
       I will publish notice of this Request in a local newspaper.
       % endif
     show if: x.no_main_parent == False and x.main_other_parent.agree != True and x.main_other_parent.risk_check == False
