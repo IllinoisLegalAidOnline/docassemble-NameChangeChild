@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "docassemble.NameChangeChild"
-version = "1.0.40"
+version = "1.0.41"
 description = "A docassemble extension."
 readme = "README.md"
 authors = [
